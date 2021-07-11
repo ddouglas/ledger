@@ -1,0 +1,66 @@
+package main
+
+import (
+	"fmt"
+
+	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
+)
+
+type config struct {
+	Env   string `default:"development"`
+	MySQL struct {
+		Host string `required:"true"`
+		Port uint   `required:"true"`
+		User string `required:"true"`
+		Pass string `required:"true"`
+		DB   string `required:"true"`
+	}
+
+	Redis struct {
+		Host string `required:"true"`
+		Port uint   `required:"true"`
+	}
+
+	Log struct {
+		Level string `required:"true"`
+	}
+
+	API struct {
+		Port uint `required:"true"`
+	}
+
+	Auth0 struct {
+		ClientID     string `required:"true"`
+		ClientSecret string `required:"true"`
+		RedirectURI  string `required:"true"`
+		Audience     string `required:"true"`
+		Issuer       string `required:"true"`
+		Tenant       string `required:"true"`
+		JWKSURI      string `required:"true"`
+		ServerToken  string `required:"true"`
+	}
+
+	Plaid struct {
+		ClientID     string `envconfig:"PLAID_CLIENT_ID" required:"true"`
+		ClientSecret string `envconfig:"PLAID_CLIENT_SECRET" required:"true"`
+		Environment  string `default:"sandbox"`
+		Webhook      string `required:"true"`
+	}
+}
+
+// buildConfig load environment variables from a
+// .env file in the .config directory into the env
+// then it maps those env variables to the struct above
+// If the file is not present, we ignore the error
+// and continue with trying to pull from the env like the application
+// is in a container and the variables were injected in at runtime.
+func buildConfig() {
+	_ = godotenv.Load(".config/.env")
+
+	cfg = new(config)
+	err := envconfig.Process("", cfg)
+	if err != nil {
+		panic(fmt.Sprintf("failed to config env: %s", err))
+	}
+}
