@@ -1,35 +1,40 @@
 package gateway
 
-type configOption func(c *config)
+import "github.com/plaid/plaid-go/plaid"
 
-type config struct {
-	products     []string
-	language     *string
-	webhook      *string
-	countryCodes []string
-}
+const (
+	PubSubPlaidWebhook = "plaid-webhook"
+)
+
+type configOption func(s *service)
 
 func WithProducts(products ...string) configOption {
-	return func(c *config) {
-		c.products = products
+	return func(s *service) {
+		s.products = products
+	}
+}
+
+func WithPlaidClient(client *plaid.Client) configOption {
+	return func(s *service) {
+		s.client = client
 	}
 }
 
 func WithLanguage(lang string) configOption {
-	return func(c *config) {
-		c.language = toStringPointer(lang)
+	return func(s *service) {
+		s.language = toStringPointer(lang)
 	}
 }
 
 func WithWebhook(hook string) configOption {
-	return func(c *config) {
-		c.webhook = toStringPointer(hook)
+	return func(s *service) {
+		s.webhook = toStringPointer(hook)
 	}
 }
 
 func WithCountryCode(codes ...string) configOption {
-	return func(c *config) {
-		c.countryCodes = codes
+	return func(s *service) {
+		s.countryCodes = codes
 	}
 }
 

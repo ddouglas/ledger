@@ -6,13 +6,27 @@ import (
 	"net/http"
 
 	"github.com/ddouglas/ledger/internal"
+	"github.com/ddouglas/ledger/internal/importer"
 )
 
 func (s *server) handlePlaidPostV1Webhook(w http.ResponseWriter, r *http.Request) {
-	var body map[string]interface{}
-	err := json.NewDecoder(r.Body).Decode(&body)
+
+	var ctx = r.Context()
+
+	var message = new(importer.WebhookMessage)
+
+	defer closeRequestBody(ctx, r)
+	err := json.NewDecoder(r.Body).Decode(message)
 	if err != nil {
-		panic(err)
+		s.writeError(ctx, w, http.StatusInternalServerError, fmt.Errorf("failed to decode request body: %w", err))
+		return
+	}
+
+	// publish message to pubsub via importer service
+	err = s.importer.PublishWebhookMessage(ctx, message)
+	if err != nil {
+		s.writeError(ctx, w, http.StatusInternalServerError, fmt.Errorf("failed to publish message: %w", err))
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)

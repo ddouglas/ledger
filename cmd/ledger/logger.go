@@ -76,25 +76,28 @@ type writerHook struct {
 
 func (w *writerHook) Fire(entry *logrus.Entry) error {
 
+	data := entry.Data
+	message := entry.Message
+
+	var service string
+	var ok bool
+	if service, ok = data["service"].(string); ok {
+		message = fmt.Sprintf("[%s] %s", service, message)
+		delete(data, "service")
+		entry.Data = data
+		entry.Message = message
+	}
+
 	if txn := newrelic.FromContext(entry.Context); txn != nil && entry.Level < logrus.InfoLevel {
-
-		data := entry.Data
-
-		msg := entry.Message
 
 		nre := newrelic.Error{}
 		nre.Stack = newrelic.NewStackTrace()
 
-		if err, ok := data["error"]; ok {
-			msg = fmt.Sprintf("%s: %v", msg, err)
-			delete(data, "error")
+		if service != "" {
+			nre.Class = service
 		}
 
-		if service, ok := data["service"]; ok {
-			nre.Class = service.(string)
-		}
-
-		nre.Message = msg
+		nre.Message = message
 		nre.Attributes = data
 
 		txn.NoticeError(nre)

@@ -12,37 +12,36 @@ type Service interface {
 }
 
 type service struct {
-	client *plaid.Client
-	config *config
+	client       *plaid.Client
+	products     []string
+	language     *string
+	webhook      *string
+	countryCodes []string
 }
 
-func New(client *plaid.Client, optFuncs ...configOption) Service {
+func New(optFuncs ...configOption) Service {
 
-	config := &config{}
+	s := &service{}
 	for _, optFunc := range optFuncs {
-		optFunc(config)
+		optFunc(s)
 	}
-
-	return &service{
-		client: client,
-		config: config,
-	}
+	return s
 }
 
 func (s *service) LinkToken(ctx context.Context, user *ledger.User) (string, error) {
 
 	linkConfig := plaid.LinkTokenConfigs{}
-	if len(s.config.products) > 0 {
-		linkConfig.Products = s.config.products
+	if len(s.products) > 0 {
+		linkConfig.Products = s.products
 	}
-	if len(s.config.countryCodes) > 0 {
-		linkConfig.CountryCodes = s.config.countryCodes
+	if len(s.countryCodes) > 0 {
+		linkConfig.CountryCodes = s.countryCodes
 	}
-	if s.config.language != nil {
-		linkConfig.Language = *s.config.language
+	if s.language != nil {
+		linkConfig.Language = *s.language
 	}
-	if s.config.webhook != nil {
-		linkConfig.Webhook = *s.config.webhook
+	if s.webhook != nil {
+		linkConfig.Webhook = *s.webhook
 	}
 
 	linkConfig.ClientName = user.Name

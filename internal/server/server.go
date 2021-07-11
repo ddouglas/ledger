@@ -6,40 +6,16 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ddouglas/ledger/internal/auth"
-	"github.com/ddouglas/ledger/internal/gateway"
-	"github.com/ddouglas/ledger/internal/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/newrelic/go-agent/v3/newrelic"
-	"github.com/sirupsen/logrus"
 )
 
-type server struct {
-	port    uint
-	server  *http.Server
-	logger  *logrus.Logger
-	auth0   auth0
-	auth    auth.Service
-	gateway gateway.Service
-	user    user.Service
-}
+func New(optFuncs ...configOption) *server {
 
-type auth0 struct {
-	ServerToken string
-}
-
-func New(port uint, auth0ServerToken string, logger *logrus.Logger, auth auth.Service, gateway gateway.Service, user user.Service) *server {
-
-	s := &server{
-		port:   port,
-		logger: logger,
-		auth0: auth0{
-			ServerToken: auth0ServerToken,
-		},
-		auth:    auth,
-		gateway: gateway,
-		user:    user,
+	s := &server{}
+	for _, optFunc := range optFuncs {
+		optFunc(s)
 	}
 
 	s.server = &http.Server{
@@ -48,11 +24,10 @@ func New(port uint, auth0ServerToken string, logger *logrus.Logger, auth auth.Se
 	}
 
 	return s
-
 }
 
 func (s *server) Run() error {
-	s.logger.Infof("start server on port: %d", s.port)
+	s.logger.WithField("service", "Server").Infof("Starting on Port %d", s.port)
 	return s.server.ListenAndServe()
 }
 
@@ -71,11 +46,8 @@ func (s *server) buildRouter() *chi.Mux {
 		middleware.SetHeader("content-type", "application/json"),
 	)
 
-	r.Group(func(r chi.Router) {
-		r.Use(s.authorization)
-		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		})
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 	})
 
 	r.Route("/external", func(r chi.Router) {

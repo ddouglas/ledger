@@ -15,3 +15,9 @@ build-backend:
 
 server: build-backend
 	./.build/ledger server
+
+importer: build-backend
+	./.build/ledger importer
+
+tunnel:
+	ngrok http 9000
