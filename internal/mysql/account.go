@@ -279,6 +279,36 @@ func (r *accountRepository) AccountsByItemID(ctx context.Context, itemID string)
 
 func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.Account) (*ledger.Account, error) {
 
+	mapColValues := mapAccount(account)
+	mapColValues["created_at"] = sq.Expr(`NOW()`)
+	mapColValues["updated_at"] = sq.Expr(`NOW()`)
+
+	query, args, err := sq.Insert(accountTable).SetMap(mapColValues).ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate query")
+	}
+
+	_, err = r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to insert account: %s", account.AccountID)
+	}
+
+	return r.Account(ctx, account.ItemID, account.AccountID)
+
+}
+
+func (r *accountRepository) UpdateAccount(ctx context.Context, itemID, accountID string, account *ledger.Account) (*ledger.Account, error) {
+
+	query, args, err := sq.Update(accountTable).SetMap()
+
+}
+
+func (r *accountRepository) DeleteAccount(ctx context.Context, itemID, accountID string) error {
+	return nil
+}
+
+func mapAccount(account *ledger.Account) map[string]interface{} {
+
 	mapColValues := map[string]interface{}{
 		"item_id":       account.ItemID,
 		"account_id":    account.AccountID,
@@ -287,8 +317,6 @@ func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.A
 		"official_name": account.OfficialName,
 		"subtype":       account.Subtype,
 		"type":          account.Type,
-		"created_at":    sq.Expr(`NOW()`),
-		"updated_at":    sq.Expr(`NOW()`),
 	}
 
 	if account.Balance != nil {
@@ -300,22 +328,6 @@ func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.A
 		mapColValues["iso_currency_code"] = account.Balance.ISOCurrencyCode
 	}
 
-	query, args, err := sq.Insert(accountTable).SetMap(mapColValues).ToSql()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate query")
-	}
+	return mapColValues
 
-	fmt.Println(query)
-	fmt.Println(args...)
-
-	return nil, nil
-
-}
-
-func (r *accountRepository) UpdateAccount(ctx context.Context, itemID, accountID string, account *ledger.Account) (*ledger.Account, error) {
-	return nil, nil
-}
-
-func (r *accountRepository) DeleteAccount(ctx context.Context, itemID, accountID string) error {
-	return nil
 }
