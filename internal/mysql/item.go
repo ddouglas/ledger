@@ -116,7 +116,32 @@ func (r *userItemRepository) CreateItem(ctx context.Context, item *ledger.Item) 
 }
 
 func (r *userItemRepository) UpdateItem(ctx context.Context, itemID string, item *ledger.Item) (*ledger.Item, error) {
-	return nil, nil
+
+	query, args, err := sq.Update(userItemTable).
+		Set("user_id", item.UserID).
+		Set("item_id", item.ItemID).
+		Set("access_token", item.AccessToken).
+		Set("institution_id", item.InstitutionID).
+		Set("webhook", item.Webhook).
+		Set("error", item.Error).
+		Set("available_products", item.AvailableProducts).
+		Set("billed_products", item.BilledProducts).
+		Set("consent_expiration_time", item.ConsentExpirationTime).
+		Set("update_type", item.UpdateType).
+		Set("item_status", item.ItemStatus).
+		Set("updated_at", sq.Expr(`NOW()`)).
+		Where(sq.Eq{"item_id": item.ItemID, "user_id": item.UserID}).ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate query: %w", err)
+	}
+
+	_, err = r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert item: %w", err)
+	}
+
+	return r.ItemByUserID(ctx, item.UserID, item.ItemID)
+
 }
 
 func (r *userItemRepository) DeleteItem(ctx context.Context, userID uuid.UUID, itemID string) error {
