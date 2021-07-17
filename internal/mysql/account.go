@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -126,7 +127,16 @@ func (r *accountRepository) Accounts(ctx context.Context, itemID string) ([]*led
 
 func (r *accountRepository) AccountsByUserID(ctx context.Context, userID uuid.UUID) ([]*ledger.Account, error) {
 
-	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"user_id": userID}).ToSql()
+	var columns = make([]string, 0, len(accountColumns))
+	for _, column := range accountColumns {
+		columns = append(columns, fmt.Sprintf("a.%s", column))
+	}
+
+	query, args, err := sq.Select(columns...).
+		From(fmt.Sprintf("%s a", accountTable)).
+		Where(sq.Eq{"ui.user_id": userID}).
+		Join("user_items ui on ui.item_id = a.item_id").
+		ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[AccountsByUserID]")
 	}
@@ -159,10 +169,10 @@ func (r *accountRepository) AccountsByUserID(ctx context.Context, userID uuid.UU
 		)
 
 		err = rows.Scan(
-			item_id, account_id, mask, name,
-			official_name, balance_available, balance_current, balance_limit,
-			balance_last_updated, iso_currency_code, unofficial_currency_code, subtype,
-			accountType, created_at, updated_at,
+			&item_id, &account_id, &mask, &name,
+			&official_name, &balance_available, &balance_current, &balance_limit,
+			&balance_last_updated, &iso_currency_code, &unofficial_currency_code, &subtype,
+			&accountType, &created_at, &updated_at,
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "[AccountsByUserID]")
