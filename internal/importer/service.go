@@ -100,12 +100,12 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	case "INITIAL_UPDATE":
 		start = time.Now().AddDate(0, 0, -30)
 		end = time.Now()
-	case "HISTORICAL_UPDATE":
+	case "HISTORICAL_UPDATE", "DEFAULT_UPDATE":
 		start = time.Now().AddDate(-2, 0, 0)
 		end = time.Now().AddDate(0, 0, -30)
-	case "DEFAULT_UPDATE":
-		start = time.Now().AddDate(0, 0, -7)
-		end = time.Now()
+	// case "DEFAULT_UPDATE":
+	// 	start = time.Now().AddDate(0, 0, 0)
+	// 	end = time.Now()
 	case "TRANSACTIONS_REMOVED":
 		// How to handle this, thinking about calling a seperate func
 		// and then returning here instead of allowing the func to continue processing

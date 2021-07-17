@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/jinzhu/copier"
 	"github.com/plaid/plaid-go/plaid"
@@ -151,6 +152,8 @@ func (s *service) Transactions(ctx context.Context, accessToken string, startDat
 	for _, transaction := range transactions {
 		transaction.ItemID = response.Item.ItemID
 	}
+
+	spew.Dump(transactions)
 
 	return transactions, nil
 
