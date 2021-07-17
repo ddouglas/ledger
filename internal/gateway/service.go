@@ -71,3 +71,18 @@ func (s *service) WebhookVerificationKey(ctx context.Context, keyID string) (*pl
 	return &response.Key, nil
 
 }
+
+func (s *service) Item(ctx context.Context, accessToken string) {
+
+}
+
+func (s *service) ExchangePublicToken(ctx context.Context, publicToken string) (itemID, accessToken string, err error) {
+
+	response, err := s.client.ExchangePublicToken(publicToken)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to exchange public token: %w", err)
+	}
+
+	return response.ItemID, response.AccessToken, nil
+
+}
