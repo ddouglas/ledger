@@ -11,7 +11,7 @@ import (
 type AccountRepository interface {
 	Account(ctx context.Context, itemID string, accountID string) (*Account, error)
 	Accounts(ctx context.Context, itemID string) ([]*Account, error)
-	// AccountsByItemID(ctx context.Context, itemID string) ([]*Account, error)
+	AccountsByItemID(ctx context.Context, itemID string) ([]*Account, error)
 	AccountsByUserID(ctx context.Context, userID uuid.UUID) ([]*Account, error)
 	CreateAccount(ctx context.Context, account *Account) (*Account, error)
 	UpdateAccount(ctx context.Context, itemID, accountID string, account *Account) (*Account, error)

@@ -8,10 +8,11 @@ import (
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
 	"github.com/gofrs/uuid"
+	"github.com/pkg/errors"
 )
 
 type Service interface {
-	// ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error)
+	ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error)
 	RegisterItem(ctx context.Context, request *ledger.RegisterItemRequest) (*ledger.Item, error)
 	ledger.ItemRepository
 }
@@ -24,22 +25,22 @@ func New(optFuncs ...configOption) Service {
 	return s
 }
 
-// func (s *service) ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error) {
+func (s *service) ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error) {
 
-// 	// Ensure Item exists
-// 	item, err := s.ItemByUserID(ctx, userID, itemID)
-// 	if err != nil {
-// 		return nil, errors.Wrap(err, "failed to fetch item for that item id")
-// 	}
+	// Ensure Item exists
+	item, err := s.ItemByUserID(ctx, userID, itemID)
+	if err != nil {
+		return nil, errors.Wrap(err, "[ItemAccountsByUserID]")
+	}
 
-// 	// accounts, err := s.account.AccountsByItemID(ctx, item.ItemID)
-// 	// if err != nil {
-// 	// 	return nil, errors.Wrap(err, "failed to fetch accounts by item id")
-// 	// }
+	accounts, err := s.account.AccountsByItemID(ctx, item.ItemID)
+	if err != nil {
+		return nil, errors.Wrap(err, "[ItemAccountsByUserID]")
+	}
 
-// 	return nil, nil
+	return accounts, nil
 
-// }
+}
 
 func (s *service) ItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*ledger.Item, error) {
 

@@ -204,6 +204,79 @@ func (r *accountRepository) AccountsByUserID(ctx context.Context, userID uuid.UU
 
 }
 
+func (r *accountRepository) AccountsByItemID(ctx context.Context, itemID string) ([]*ledger.Account, error) {
+
+	query, args, err := sq.Select(accountColumns...).
+		From(fmt.Sprintf("%s a", accountTable)).
+		Where(sq.Eq{"item_id": itemID}).
+		ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "[AccountsByUserID]")
+	}
+
+	rows, err := r.db.QueryxContext(ctx, query, args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "[AccountsByUserID]")
+	}
+
+	defer rows.Close()
+	var accounts = make([]*ledger.Account, 0)
+	for rows.Next() {
+
+		var (
+			item_id                  string
+			account_id               string
+			mask                     null.String
+			name                     null.String
+			official_name            null.String
+			balance_available        float64
+			balance_current          float64
+			balance_limit            float64
+			balance_last_updated     null.Time
+			iso_currency_code        string
+			unofficial_currency_code null.String
+			subtype                  null.String
+			accountType              null.String
+			created_at               time.Time
+			updated_at               time.Time
+		)
+
+		err = rows.Scan(
+			&item_id, &account_id, &mask, &name,
+			&official_name, &balance_available, &balance_current, &balance_limit,
+			&balance_last_updated, &iso_currency_code, &unofficial_currency_code, &subtype,
+			&accountType, &created_at, &updated_at,
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "[AccountsByUserID]")
+		}
+
+		accounts = append(accounts, &ledger.Account{
+			ItemID:       item_id,
+			AccountID:    account_id,
+			Mask:         mask,
+			Name:         name,
+			OfficialName: official_name,
+			Subtype:      subtype,
+			Type:         accountType,
+			CreatedAt:    created_at,
+			UpdatedAt:    updated_at,
+			Balance: &ledger.AccountBalance{
+				Available:              balance_available,
+				Current:                balance_current,
+				Limit:                  balance_limit,
+				ISOCurrencyCode:        iso_currency_code,
+				UnofficialCurrencyCode: unofficial_currency_code,
+				LastUpdated:            balance_last_updated,
+			},
+		})
+
+	}
+
+	return accounts, errors.Wrap(err, "[AccountsByUserID]")
+
+}
+
 func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.Account) (*ledger.Account, error) {
 	return nil, nil
 }

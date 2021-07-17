@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -29,15 +30,21 @@ func (s *server) handleGetItemAccounts(w http.ResponseWriter, r *http.Request) {
 
 	var ctx = r.Context()
 
-	// user := internal.UserFromContext(ctx)
+	user := internal.UserFromContext(ctx)
 
-	// accounts, err := s.item.ItemAccountsByUserID(ctx, user.ID)
-	// if err != nil {
-	// 	s.writeError(ctx, w, http.StatusForbidden, err)
-	// 	return
-	// }
+	itemID := chi.URLParam(r, "itemID")
+	if itemID == "" {
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("itemID is required"))
+		return
+	}
 
-	s.writeResponse(ctx, w, http.StatusOK, nil)
+	accounts, err := s.item.ItemAccountsByUserID(ctx, user.ID, itemID)
+	if err != nil {
+		s.writeError(ctx, w, http.StatusBadRequest, err)
+		return
+	}
+
+	s.writeResponse(ctx, w, http.StatusOK, accounts)
 
 }
 
