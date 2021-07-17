@@ -17,5 +17,18 @@
             "showLog": true,
             "envFile": "${workspaceFolder}/.config/.env"
         },
+        {
+            "name": "Debug Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/ledger",
+            "env": {},
+            "args": [
+                "server"
+            ],
+            "showLog": true,
+            "envFile": "${workspaceFolder}/.config/.env"
+        },
     ]
 }
