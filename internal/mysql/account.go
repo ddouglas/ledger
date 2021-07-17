@@ -278,7 +278,8 @@ func (r *accountRepository) AccountsByItemID(ctx context.Context, itemID string)
 }
 
 func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.Account) (*ledger.Account, error) {
-	return nil, nil
+
+	query, args, err := sq.Insert(accountTable).SetMap()
 }
 
 func (r *accountRepository) UpdateAccount(ctx context.Context, itemID, accountID string, account *ledger.Account) (*ledger.Account, error) {
