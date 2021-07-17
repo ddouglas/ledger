@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/ulule/deepcopier"
 )
@@ -30,14 +29,12 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 	for _, plaidTransaction := range newTrans {
 
-		spew.Dump(plaidTransaction)
-
 		transaction, err := s.Transaction(ctx, item.ItemID, plaidTransaction.TransactionID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("failed to fetch transactions from DB")
 		}
 
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 
 			plaidTransaction.ItemID = item.ItemID
 
