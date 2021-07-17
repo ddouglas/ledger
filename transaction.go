@@ -1,20 +1,27 @@
 package ledger
 
 import (
+	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/plaid/plaid-go/plaid"
 	"github.com/volatiletech/null"
 )
 
 type TransactionRepository interface {
+	Transaction(ctx context.Context, itemID, transactionID string) (*Transaction, error)
+	TransactionsByAccountID(ctx context.Context, itemID, accountID string) ([]*Transaction, error)
+	TransactionsByTransacitionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*Transaction, error)
+	CreateTransaction(ctx context.Context, transaction *Transaction) (*Transaction, error)
+	UpdateTransaction(ctx context.Context, transactionID string, transaction *Transaction) (*Transaction, error)
 }
 
 type Transaction struct {
-	ItemID                 string      `db:"item_id" json:"itemID"`
+	ItemID                 string      `db:"item_id" json:"itemID" deepcopier:"skip"`
 	AccountID              string      `db:"account_id" json:"accountID"`
 	TransactionID          string      `db:"transaction_id" json:"transactionID"`
 	PendingTransactionID   null.String `db:"pending_transaction_id" json:"pendingTransactionID"`
@@ -23,7 +30,7 @@ type Transaction struct {
 	Pending                bool        `db:"pending" json:"pending"`
 	PaymentChannel         string      `db:"payment_channel" json:"paymentChannel"` // ENUM: online, in store, other
 	MerchantName           null.String `db:"merchant_name" json:"merchantName"`
-	Categories             Categories  `db:"categories" json:"categories"` // Array, needs to be converted to comma-delimited string going into DB and Slice comming out
+	Categories             SliceString `db:"categories" json:"categories"` // Array, needs to be converted to comma-delimited string going into DB and Slice comming out
 	UnofficialCurrencyCode null.String `db:"unofficial_currency_code" json:"unofficialCurrencyCode"`
 	ISOCurrencyCode        null.String `db:"iso_currency_code" json:"isoCurrencyCode"`
 	Amount                 float64     `db:"amount" json:"amount"`
@@ -32,11 +39,48 @@ type Transaction struct {
 	AuthorizedDateTime     null.Time   `db:"authorized_datetime" json:"authorizedDateTime"`
 	Date                   time.Time   `db:"date" json:"date"`
 	DateTime               null.Time   `db:"datetime" json:"dateTime"`
-	CreatedAt              time.Time   `db:"created_at" json:"-"`
-	UpdatedAt              time.Time   `db:"updated_at" json:"-"`
+	DeletedAt              null.Time   `db:"deleted_at" json:"deletedAt" deepcopier:"skip"`
+	HiddenAt               null.Time   `db:"hidden_at" json:"hiddenAt" deepcopier:"skip"`
+	CreatedAt              time.Time   `db:"created_at" json:"-" deepcopier:"skip"`
+	UpdatedAt              time.Time   `db:"updated_at" json:"-" deepcopier:"skip"`
 
-	PaymentMeta TransactionPaymentMeta `json:"transactionMeta"`
-	Location    TransactionLocation    `json:"location"`
+	PaymentMeta *TransactionPaymentMeta `json:"transactionMeta"`
+	Location    *TransactionLocation    `json:"location"`
+}
+
+func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {
+
+	t.AccountID = transaction.AccountID
+	t.TransactionID = transaction.ID
+	t.PendingTransactionID = null.NewString(transaction.PendingTransactionID, transaction.PendingTransactionID != "")
+	t.CategoryID = null.NewString(transaction.CategoryID, transaction.CategoryID != "")
+	t.Name = transaction.Name
+	t.Pending = transaction.Pending
+	t.PaymentChannel = transaction.PaymentChannel
+	t.MerchantName = null.NewString(transaction.MerchantName, transaction.MerchantName != "")
+	t.Categories = SliceString(transaction.Category)
+	t.UnofficialCurrencyCode = null.NewString(transaction.UnofficialCurrencyCode, transaction.UnofficialCurrencyCode != "")
+	t.ISOCurrencyCode = null.NewString(transaction.ISOCurrencyCode, transaction.ISOCurrencyCode != "")
+	t.Amount = transaction.Amount
+	authorizedDate, err := time.Parse("2006-01-02", transaction.AuthorizedDate)
+	t.AuthorizedDate = null.NewTime(authorizedDate, err == nil)
+	date, err := time.Parse("2006-01-02", transaction.Date)
+	if err == nil {
+		t.Date = date
+	}
+
+	t.Location = &TransactionLocation{
+
+		Address:     null.NewString(transaction.Location.Address, transaction.Location.Address != ""),
+		City:        null.NewString(transaction.Location.City, transaction.Location.City != ""),
+		Lat:         transaction.Location.Lat,
+		Lon:         transaction.Location.Lon,
+		Region:      null.NewString(transaction.Location.Region, transaction.Location.Region != ""),
+		StoreNumber: null.NewString(transaction.Location.StoreNumber, transaction.Location.StoreNumber != ""),
+		PostalCode:  null.NewString(transaction.Location.PostalCode, transaction.Location.PostalCode != ""),
+		Country:     null.NewString(transaction.Location.Country, transaction.Location.Country != ""),
+	}
+
 }
 
 type Categories []string
@@ -73,17 +117,22 @@ func (t Categories) Value() (driver.Value, error) {
 }
 
 type TransactionLocation struct {
-	TransactionID string       `db:"transaction_id" json:"transactionID"`
-	Address       null.String  `db:"address" json:"address"`
-	City          null.String  `db:"city" json:"city"`
-	Region        null.String  `db:"region" json:"region"`
-	PostalCode    null.String  `db:"postal_code" json:"postalCode"`
-	Country       null.String  `db:"country" json:"country"`
-	Lat           null.Float64 `db:"lat" json:"lat"`
-	Lon           null.Float64 `db:"lon" json:"lon"`
-	StoreNumber   null.String  `db:"store_number" json:"storeNumber"`
-	CreatedAt     time.Time    `db:"created_at" json:"-"`
-	UpdatedAt     time.Time    `db:"updated_at" json:"-"`
+	ItemID        string      `db:"item_id" json:"-"`
+	TransactionID string      `db:"transaction_id" json:"transactionID"`
+	Address       null.String `db:"address" json:"address"`
+	City          null.String `db:"city" json:"city"`
+	Region        null.String `db:"region" json:"region"`
+	PostalCode    null.String `db:"postal_code" json:"postalCode"`
+	Country       null.String `db:"country" json:"country"`
+	Lat           float64     `db:"lat" json:"lat"`
+	Lon           float64     `db:"lon" json:"lon"`
+	StoreNumber   null.String `db:"store_number" json:"storeNumber"`
+	CreatedAt     time.Time   `db:"created_at" json:"-"`
+	UpdatedAt     time.Time   `db:"updated_at" json:"-"`
+}
+
+func (tl *TransactionLocation) IsEmpty() bool {
+	return tl.Address.Valid
 }
 
 type TransactionPaymentMeta struct {

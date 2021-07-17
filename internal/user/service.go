@@ -17,14 +17,12 @@ type Service interface {
 	ledger.UserRepository
 }
 
-type service struct {
-	ledger.UserRepository
-}
-
-func New(user ledger.UserRepository) Service {
-	return &service{
-		UserRepository: user,
+func New(optFuncs ...configOption) Service {
+	s := &service{}
+	for _, optFunc := range optFuncs {
+		optFunc(s)
 	}
+	return s
 }
 
 func (s *service) UserFromToken(ctx context.Context, token jwt.Token) (*ledger.User, error) {

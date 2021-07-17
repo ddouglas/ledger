@@ -206,7 +206,9 @@ func actionAPI(c *cli.Context) error {
 	}
 	cache := cache.New(core.redis)
 	oauth2 := oauth2Config()
-	user := user.New(core.repos.user)
+	user := user.New(
+		user.WithUserRepository(core.repos.user),
+	)
 	auth := auth.New(
 		cache,
 		client,

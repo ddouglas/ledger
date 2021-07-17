@@ -1,7 +1,10 @@
 package importer
 
 import (
+	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/gateway"
+	"github.com/ddouglas/ledger/internal/item"
+	"github.com/ddouglas/ledger/internal/transaction"
 	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
@@ -10,6 +13,10 @@ import (
 type configOption func(s *service)
 
 type service struct {
+	account     account.Service
+	item        item.Service
+	transaction transaction.Service
+
 	redis    *redis.Client
 	gateway  gateway.Service
 	logger   *logrus.Logger

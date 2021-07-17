@@ -3,9 +3,12 @@ package server
 import (
 	"net/http"
 
+	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/auth"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/ddouglas/ledger/internal/importer"
+	"github.com/ddouglas/ledger/internal/item"
+	"github.com/ddouglas/ledger/internal/transaction"
 	"github.com/ddouglas/ledger/internal/user"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
@@ -22,6 +25,9 @@ type server struct {
 	gateway          gateway.Service
 	newrelic         *newrelic.Application
 	user             user.Service
+	account          account.Service
+	item             item.Service
+	transaction      transaction.Service
 
 	server *http.Server
 }
