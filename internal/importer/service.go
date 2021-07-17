@@ -37,7 +37,7 @@ func (s *service) Run(ctx context.Context) {
 	)
 
 	entry := s.logger.WithFields(logrus.Fields{
-		"service": "Gateway",
+		"service": "Importer",
 		"channel": gateway.PubSubPlaidWebhook,
 	})
 	entry.Info("Subscibed to Redis Pubsub")

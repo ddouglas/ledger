@@ -28,18 +28,18 @@ func New(optFuncs ...configOption) Service {
 func (s *service) UserFromToken(ctx context.Context, token jwt.Token) (*ledger.User, error) {
 
 	claims := token.PrivateClaims()
-	if id, ok := claims["https://accountID"]; !ok || id.(string) == "" {
-		return nil, fmt.Errorf("required key accountID is missing  from token")
+	if id, ok := claims["https://userID"]; !ok || id.(string) == "" {
+		return nil, fmt.Errorf("required key userID is missing  from token")
 	}
 
-	accountID, err := uuid.FromString(claims["https://accountID"].(string))
+	userID, err := uuid.FromString(claims["https://userID"].(string))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse uuid: %w", err)
 	}
 
-	user, err := s.User(ctx, accountID)
+	user, err := s.User(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch user for provided accountID %s: %w", accountID, err)
+		return nil, fmt.Errorf("failed to fetch user for provided userID %s: %w", userID, err)
 	}
 
 	return user, nil

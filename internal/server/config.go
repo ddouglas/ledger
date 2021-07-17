@@ -79,3 +79,21 @@ func WithImporter(importer importer.Service) configOption {
 		s.importer = importer
 	}
 }
+
+func WithAccounts(account account.Service) configOption {
+	return func(s *server) {
+		s.account = account
+	}
+}
+
+func WithItems(item item.Service) configOption {
+	return func(s *server) {
+		s.item = item
+	}
+}
+
+func WithTransactions(transaction transaction.Service) configOption {
+	return func(s *server) {
+		s.transaction = transaction
+	}
+}
