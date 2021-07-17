@@ -51,7 +51,7 @@ func (s *server) buildRouter() *chi.Mux {
 	})
 
 	r.Route("/api", func(r chi.Router) {
-
+		r.Use(s.authorization)
 		r.Get("/items", s.handleGetUserItems)
 		r.Post("/items", s.handlePostUserItems)
 		// r.Get("/items/{itemID}/accounts", s.handleGetItemAccounts)
