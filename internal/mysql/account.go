@@ -12,30 +12,61 @@ type accountRepository struct {
 	db *sqlx.DB
 }
 
-var accountColumns := []string{
+const accountTable = "accounts"
+
+var accountColumns = []string{
+	"item_id",
 	"account_id",
 	"mask",
 	"name",
 	"official_name",
-	"subtype",
-	"type",
-	"available",
-	"current",
+	"balance_available",
+	"balance_current",
 	"iso_currency_code",
 	"limit",
 	"unofficial_currency_code",
 	"last_updated_datetime",
+	"subtype",
+	"type",
 }
 
 func NewAccountRepository(db *sqlx.DB) ledger.AccountRepository {
 	return &accountRepository{db: db}
 }
 
-
-
 func (r *accountRepository) Account(ctx context.Context, itemID string, accountID string) (*ledger.Account, error) {
-	
-	query, args, err := sq.Select()
+
+	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"item_id": itemID, "account_id": accountID}).ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate query: %w", err)
+	}
+
+	rows, err := r.db.QueryxContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to query accounts: %w", err)
+	}
+
+	for rows.Next() {
+		var (
+			item_id string
+			account_id string
+			mask string
+			name string
+			official_name string
+			balance_available float64
+			balance_current float64
+			iso_currency_code
+			limit
+			unofficial_currency_code
+			last_updated_datetime
+			subtype string
+			accountType string
+			
+		)
+		
+
+	}
+
 
 }
 
