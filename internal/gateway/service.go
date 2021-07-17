@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/jinzhu/copier"
 	"github.com/plaid/plaid-go/plaid"
@@ -144,16 +143,12 @@ func (s *service) Transactions(ctx context.Context, accessToken string, startDat
 	}
 
 	var transactions = make([]*ledger.Transaction, 0, len(plaidTransactions))
-	err = copier.Copy(&transactions, plaidTransactions)
-	if err != nil {
-		return nil, fmt.Errorf("faild to copy transaction to ledger transaction slice: %w", err)
-	}
 
-	for _, transaction := range transactions {
-		transaction.ItemID = response.Item.ItemID
+	for _, plaidTransaction := range plaidTransactions {
+		transaction := new(ledger.Transaction)
+		transaction.FromPlaidTransaction(plaidTransaction)
+		transactions = append(transactions, transaction)
 	}
-
-	spew.Dump(transactions)
 
 	return transactions, nil
 

@@ -8,6 +8,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 )
 
 type transactionRepository struct {
@@ -56,7 +57,7 @@ func (r *transactionRepository) Transaction(ctx context.Context, itemID, transac
 	var transaction = new(ledger.Transaction)
 	err = r.db.GetContext(ctx, transaction, query, args...)
 
-	return transaction, err
+	return transaction, errors.Wrap(err, "[mysql.Transaction]")
 
 }
 
