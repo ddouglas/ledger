@@ -147,6 +147,7 @@ func (s *service) Transactions(ctx context.Context, accessToken string, startDat
 	for _, plaidTransaction := range plaidTransactions {
 		transaction := new(ledger.Transaction)
 		transaction.FromPlaidTransaction(plaidTransaction)
+		transaction.ItemID = response.Item.ItemID
 		transactions = append(transactions, transaction)
 	}
 

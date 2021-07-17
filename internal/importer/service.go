@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -119,8 +118,6 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 		s.logger.WithError(err).Error("failed to fetch transactions")
 		return
 	}
-
-	spew.Dump(transactions)
 
 	err = s.transaction.ProcessTransactions(ctx, item, transactions)
 	if err != nil {
