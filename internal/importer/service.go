@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -97,10 +98,10 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	var start, end time.Time
 
 	switch message.WebhookCode {
-	case "INITIAL_UPDATE":
+	case "INITIAL_UPDATE", "DEFAULT_UPDATE":
 		start = time.Now().AddDate(0, 0, -30)
 		end = time.Now()
-	case "HISTORICAL_UPDATE", "DEFAULT_UPDATE":
+	case "HISTORICAL_UPDATE":
 		start = time.Now().AddDate(-2, 0, 0)
 		end = time.Now().AddDate(0, 0, -30)
 	// case "DEFAULT_UPDATE":
@@ -118,6 +119,8 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 		s.logger.WithError(err).Error("failed to fetch transactions")
 		return
 	}
+
+	spew.Dump(transactions)
 
 	err = s.transaction.ProcessTransactions(ctx, item, transactions)
 	if err != nil {

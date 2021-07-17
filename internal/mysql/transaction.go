@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -65,17 +64,17 @@ func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, ite
 
 	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{"item_id": itemID, "account_id": accountID}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate sql stmt: %w", err)
+		return nil, errors.Wrap(err, "[mysql.TransactionsByAccountID]")
 	}
 
 	var transactions = make([]*ledger.Transaction, 0)
 	err = r.db.SelectContext(ctx, &transactions, query, args...)
 
-	return transactions, err
+	return transactions, errors.Wrap(err, "[mysql.TransactionsByAccountID]")
 
 }
 
-func (r *transactionRepository) TransactionsByTransacitionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*ledger.Transaction, error) {
+func (r *transactionRepository) TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*ledger.Transaction, error) {
 
 	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{"item_id": itemID, "transaction_id": transactionIDs}).ToSql()
 	if err != nil {
@@ -85,7 +84,7 @@ func (r *transactionRepository) TransactionsByTransacitionIDs(ctx context.Contex
 	var transactions = make([]*ledger.Transaction, 0)
 	err = r.db.SelectContext(ctx, &transactions, query, args...)
 
-	return transactions, err
+	return transactions, errors.Wrap(err, "[mysql.TransactionsByTransactionIDs]")
 
 }
 
@@ -113,14 +112,14 @@ func (r *transactionRepository) CreateTransaction(ctx context.Context, transacti
 			transaction.DateTime,
 			sq.Expr(`NOW()`),
 			sq.Expr(`NOW()`),
-		).Options("IGNORE").ToSql()
+		).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate sql stmt: %w", err)
+		return nil, errors.Wrap(err, "[mysql.CreateTransaction]")
 	}
 
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert item: %w", err)
+		return nil, errors.Wrap(err, "[mysql.CreateTransaction]")
 	}
 
 	return r.Transaction(ctx, transaction.ItemID, transaction.TransactionID)
@@ -151,13 +150,12 @@ func (r *transactionRepository) UpdateTransaction(ctx context.Context, transacti
 		Set("updated_at", sq.Expr(`NOW()`)).
 		Where(sq.Eq{"transaction_id": transaction.TransactionID}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate sql stmt: %w", err)
+		return nil, errors.Wrap(err, "[mysql.UpdateTransaction]")
 	}
 
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		spew.Dump(transaction)
-		return nil, fmt.Errorf("failed to update item: %w", err)
+		return nil, errors.Wrap(err, "[mysql.UpdateTransaction]")
 	}
 
 	return r.Transaction(ctx, transaction.ItemID, transaction.TransactionID)

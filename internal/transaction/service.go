@@ -6,7 +6,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/ulule/deepcopier"
 )
@@ -28,6 +30,8 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 	for _, plaidTransaction := range newTrans {
 
+		spew.Dump(plaidTransaction)
+
 		transaction, err := s.Transaction(ctx, item.ItemID, plaidTransaction.TransactionID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("failed to fetch transactions from DB")
@@ -42,6 +46,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				return fmt.Errorf("failed to insert transaction %s into DB: %w", plaidTransaction.TransactionID, err)
 			}
 
+			time.Sleep(time.Second)
 			continue
 
 		}
@@ -59,6 +64,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		// if !transaction.Location.IsEmpty() {
 		// 	_, err = s.
 		// }
+		time.Sleep(time.Second)
 
 	}
 
