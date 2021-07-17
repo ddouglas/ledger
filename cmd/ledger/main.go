@@ -214,6 +214,7 @@ func actionAPI(c *cli.Context) error {
 	user := user.New(
 		user.WithUserRepository(core.repos.user),
 	)
+
 	auth := auth.New(
 		cache,
 		client,
@@ -226,6 +227,7 @@ func actionAPI(c *cli.Context) error {
 	accounts := account.New(
 		account.WithAccountRepository(core.repos.account),
 	)
+
 	item := item.New(
 		item.WithAccount(core.repos.account),
 		item.WithGateway(core.gateway),
@@ -247,7 +249,6 @@ func actionAPI(c *cli.Context) error {
 		importer.WithTransactions(transaction),
 	)
 
-	// cfg.API.Port, cfg.Auth0.ServerToken, logger, auth, importer core.gateway, user
 	server := server.New(
 		server.WithAuth(auth),
 		server.WithAuth0ServerToken(cfg.Auth0.ServerToken),

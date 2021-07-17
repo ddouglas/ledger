@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -19,6 +20,7 @@ type Service interface {
 }
 
 func New(optFucs ...configOption) Service {
+	spew.Dump(optFucs)
 	s := &service{}
 	for _, optFunc := range optFucs {
 		optFunc(s)
@@ -74,6 +76,8 @@ func (s *service) processMessage(ctx context.Context, message *WebhookMessage) {
 }
 
 func (s *service) processTransactionUpdate(ctx context.Context, message *WebhookMessage) {
+
+	spew.Dump(s.item, message)
 
 	existingItem, err := s.item.Item(ctx, message.ItemID)
 	if err != nil {
