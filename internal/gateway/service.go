@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ddouglas/ledger"
 	"github.com/plaid/plaid-go/plaid"
@@ -56,5 +57,16 @@ func (s *service) LinkToken(ctx context.Context, user *ledger.User) (string, err
 	}
 
 	return linkResponse.LinkToken, nil
+
+}
+
+func (s *service) WebhookVerificationKey(ctx context.Context, keyID string) (*plaid.WebhookVerificationKey, error) {
+
+	response, err := s.client.GetWebhookVerificationKey(keyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch webhook verification key: %w", err)
+	}
+
+	return &response.Key, nil
 
 }
