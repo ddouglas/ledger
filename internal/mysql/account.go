@@ -39,6 +39,8 @@ func NewAccountRepository(db *sqlx.DB) ledger.AccountRepository {
 	return &accountRepository{db: db}
 }
 
+// func (r *accountRepository) Account(ctx)
+
 func (r *accountRepository) Accounts(ctx context.Context, itemID string) ([]*ledger.Account, error) {
 
 	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"item_id": itemID, "account_id": accountID}).ToSql()
@@ -110,7 +112,7 @@ func (r *accountRepository) Accounts(ctx context.Context, itemID string) ([]*led
 }
 
 func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.Account) (*ledger.Account, error) {
-	return nil, nil
+
 }
 
 func (r *accountRepository) UpdateAccount(ctx context.Context, itemID, accountID string, account *ledger.Account) (*ledger.Account, error) {
