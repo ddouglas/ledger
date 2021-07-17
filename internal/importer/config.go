@@ -46,3 +46,21 @@ func WithGateway(gateway gateway.Service) configOption {
 		s.gateway = gateway
 	}
 }
+
+func WithAccounts(account account.Service) configOption {
+	return func(s *service) {
+		s.account = account
+	}
+}
+
+func WithItems(item item.Service) configOption {
+	return func(s *service) {
+		s.item = item
+	}
+}
+
+func WithTransactions(transaction transaction.Service) configOption {
+	return func(s *service) {
+		s.transaction = transaction
+	}
+}

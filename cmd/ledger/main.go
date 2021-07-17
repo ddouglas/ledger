@@ -45,6 +45,7 @@ type core struct {
 type repositories struct {
 	account     ledger.AccountRepository
 	health      ledger.HealthRepository
+	institution ledger.InstitutionRepository
 	item        ledger.ItemRepository
 	transaction ledger.TransactionRepository
 	user        ledger.UserRepository
@@ -162,6 +163,7 @@ func buildRepositories() *repositories {
 		item:        mysql.NewItemRepository(dbx),
 		transaction: mysql.NewTransactionRepository(dbx),
 		user:        mysql.NewUserRepository(dbx),
+		institution: mysql.NewInstitutionRepository(dbx),
 	}
 
 }
@@ -277,6 +279,7 @@ func actionImporter(c *cli.Context) error {
 	importer := importer.New(
 		importer.WithRedis(core.redis),
 		importer.WithGateway(core.gateway),
+		importer.WithLogger(core.logger),
 	)
 
 	importer.Run(context.TODO())
