@@ -39,7 +39,7 @@ func NewAccountRepository(db *sqlx.DB) ledger.AccountRepository {
 	return &accountRepository{db: db}
 }
 
-func (r *accountRepository) Account(ctx context.Context, itemID string, accountID string) (*ledger.Account, error) {
+func (r *accountRepository) Accounts(ctx context.Context, itemID string) ([]*ledger.Account, error) {
 
 	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"item_id": itemID, "account_id": accountID}).ToSql()
 	if err != nil {
@@ -54,7 +54,7 @@ func (r *accountRepository) Account(ctx context.Context, itemID string, accountI
 	defer rows.Close()
 	var accounts = make([]*ledger.Account, 0)
 	for rows.Next() {
-		
+
 		var (
 			item_id                  string
 			account_id               string
@@ -66,7 +66,7 @@ func (r *accountRepository) Account(ctx context.Context, itemID string, accountI
 			balance_limit            float64
 			balance_last_updated     null.Time
 			iso_currency_code        string
-			unofficial_currency_code string
+			unofficial_currency_code null.String
 			subtype                  null.String
 			accountType              null.String
 			created_at               time.Time
@@ -83,31 +83,30 @@ func (r *accountRepository) Account(ctx context.Context, itemID string, accountI
 			return nil, fmt.Errorf("faild to scan row: %w", err)
 		}
 
-account := &ledger.Account{
-	ItemID: item_id,
-	AccountID: account_id,
-	Mask: mask,
-	Name: name,
-	OfficialName: official_name,
-	Subtype: subtype,
-	Type: accountType,
-	CreatedAt: created_at,
-	UpdatedAt: updated_at,
-	Balance: &ledger.AccountBalance{
-		Available: ,
-	},
-}
-
 		accounts = append(accounts, &ledger.Account{
-			
+			ItemID:       item_id,
+			AccountID:    account_id,
+			Mask:         mask,
+			Name:         name,
+			OfficialName: official_name,
+			Subtype:      subtype,
+			Type:         accountType,
+			CreatedAt:    created_at,
+			UpdatedAt:    updated_at,
+			Balance: &ledger.AccountBalance{
+				Available:              balance_available,
+				Current:                balance_current,
+				Limit:                  balance_limit,
+				ISOCurrencyCode:        iso_currency_code,
+				UnofficialCurrencyCode: unofficial_currency_code,
+				LastUpdated:            balance_last_updated,
+			},
 		})
 
 	}
 
-}
+	return accounts, nil
 
-func (r *accountRepository) Accounts(ctx context.Context, itemID string) ([]*ledger.Account, error) {
-	return nil, nil
 }
 
 func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.Account) (*ledger.Account, error) {
