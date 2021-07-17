@@ -10,6 +10,7 @@ import (
 
 type Service interface {
 	LinkToken(ctx context.Context, user *ledger.User) (string, error)
+	WebhookVerificationKey(ctx context.Context, keyID string) (*plaid.WebhookVerificationKey, error)
 }
 
 type service struct {
