@@ -7,6 +7,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ddouglas/ledger"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 )
 
 type institutionRepository struct {
@@ -30,7 +31,7 @@ func (r *institutionRepository) Institution(ctx context.Context, id string) (*le
 
 	var institution = new(ledger.Institution)
 	err = r.db.GetContext(ctx, institution, query, args...)
-	return institution, err
+	return institution, errors.Wrap(err, "[Institution]")
 
 }
 
@@ -43,7 +44,7 @@ func (r *institutionRepository) Institutions(ctx context.Context) ([]*ledger.Ins
 
 	var institutions = make([]*ledger.Institution, 0)
 	err = r.db.SelectContext(ctx, &institutions, query, args...)
-	return institutions, err
+	return institutions, errors.Wrap(err, "[Institutions]")
 
 }
 
@@ -61,11 +62,9 @@ func (r *institutionRepository) CreateInstitution(ctx context.Context, instituti
 		return nil, fmt.Errorf("failed to generate sql stmt: %w", err)
 	}
 
-	fmt.Println(query)
-
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "[CreateInstitution]")
 	}
 
 	return r.Institution(ctx, institution.ID)

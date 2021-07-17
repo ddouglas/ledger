@@ -2,13 +2,13 @@ package mysql
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ddouglas/ledger"
 	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"github.com/volatiletech/null"
 )
 
@@ -44,13 +44,13 @@ func (r *accountRepository) Account(ctx context.Context, itemID string, accountI
 
 	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"item_id": itemID, "account_id": accountID}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query: %w", err)
+		return nil, errors.Wrap(err, "[Account]")
 	}
 
 	var account = new(ledger.Account)
 	err = r.db.GetContext(ctx, account, query, args...)
 
-	return account, err
+	return account, errors.Wrap(err, "[Account]")
 
 }
 
@@ -58,12 +58,12 @@ func (r *accountRepository) Accounts(ctx context.Context, itemID string) ([]*led
 
 	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"item_id": itemID}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query: %w", err)
+		return nil, errors.Wrap(err, "[Accounts]")
 	}
 
 	rows, err := r.db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query accounts: %w", err)
+		return nil, errors.Wrap(err, "[Accounts]")
 	}
 
 	defer rows.Close()
@@ -95,7 +95,7 @@ func (r *accountRepository) Accounts(ctx context.Context, itemID string) ([]*led
 			accountType, created_at, updated_at,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("faild to scan row: %w", err)
+			return nil, errors.Wrap(err, "[Account]")
 		}
 
 		accounts = append(accounts, &ledger.Account{
@@ -128,12 +128,12 @@ func (r *accountRepository) AccountsByUserID(ctx context.Context, userID uuid.UU
 
 	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"user_id": userID}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query: %w", err)
+		return nil, errors.Wrap(err, "[AccountsByUserID]")
 	}
 
 	rows, err := r.db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query accounts: %w", err)
+		return nil, errors.Wrap(err, "[AccountsByUserID]")
 	}
 
 	defer rows.Close()
@@ -165,7 +165,7 @@ func (r *accountRepository) AccountsByUserID(ctx context.Context, userID uuid.UU
 			accountType, created_at, updated_at,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("faild to scan row: %w", err)
+			return nil, errors.Wrap(err, "[AccountsByUserID]")
 		}
 
 		accounts = append(accounts, &ledger.Account{
@@ -190,7 +190,7 @@ func (r *accountRepository) AccountsByUserID(ctx context.Context, userID uuid.UU
 
 	}
 
-	return accounts, nil
+	return accounts, errors.Wrap(err, "[AccountsByUserID]")
 
 }
 
