@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -89,7 +90,18 @@ func (s *service) VerifyWebhookMessage(ctx context.Context, header http.Header, 
 	set := jwk.NewSet()
 	set.Add(key)
 
-	parsedVerificationHeader := jwt.ParseString(verificationJWT, jwt.WithKeySet(set))
+	parsedVerificationHeader, err := jwt.ParseString(verificationJWT, jwt.WithKeySet(set))
+	if err != nil {
+		return fmt.Errorf("failed to parse verification header: %w", err)
+	}
+
+	verificationHeaderClaims := parsedVerificationHeader.PrivateClaims()
+	requestBodyHash := verificationHeaderClaims["request_body_sha256"]
+
+	messageHash := sha256.Sum256(message)
+	if messageHash != requestBodyHash {
+		return fmt.Errorf("webhook cannot be verified. hashes are not equal")
+	}
 
 	return nil
 
