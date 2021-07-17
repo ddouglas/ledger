@@ -2,10 +2,13 @@ package mysql
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ddouglas/ledger"
 	"github.com/jmoiron/sqlx"
+	"github.com/volatiletech/null"
 )
 
 type accountRepository struct {
@@ -22,12 +25,14 @@ var accountColumns = []string{
 	"official_name",
 	"balance_available",
 	"balance_current",
+	"balance_limit",
+	"balance_last_updated",
 	"iso_currency_code",
-	"limit",
 	"unofficial_currency_code",
-	"last_updated_datetime",
 	"subtype",
 	"type",
+	"created_at",
+	"updated_at",
 }
 
 func NewAccountRepository(db *sqlx.DB) ledger.AccountRepository {
@@ -48,25 +53,24 @@ func (r *accountRepository) Account(ctx context.Context, itemID string, accountI
 
 	for rows.Next() {
 		var (
-			item_id string
-			account_id string
-			mask string
-			name string
-			official_name string
-			balance_available float64
-			balance_current float64
-			iso_currency_code
-			limit
-			unofficial_currency_code
-			last_updated_datetime
-			subtype string
-			accountType string
-			
+			item_id                  string
+			account_id               string
+			mask                     null.String
+			name                     null.String
+			official_name            null.String
+			balance_available        null.Float64
+			balance_current          null.Float64
+			balance_limit            null.Float64
+			balance_last_updated     null.Time
+			iso_currency_code        string
+			unofficial_currency_code string
+			subtype                  null.String
+			accountType              null.String
+			created_at               time.Time
+			updated_at               time.Time
 		)
-		
 
 	}
-
 
 }
 
