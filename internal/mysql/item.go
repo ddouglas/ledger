@@ -38,7 +38,7 @@ func NewItemRepository(db *sqlx.DB) ledger.ItemRepository {
 
 func (r *userItemRepository) Item(ctx context.Context, itemID string) (*ledger.Item, error) {
 
-	query, args, err := sq.Select(userColumns...).From(userItemTable).Where(sq.Eq{
+	query, args, err := sq.Select(userItemColumns...).From(userItemTable).Where(sq.Eq{
 		"item_id": itemID,
 	}).ToSql()
 	if err != nil {
@@ -54,7 +54,7 @@ func (r *userItemRepository) Item(ctx context.Context, itemID string) (*ledger.I
 
 func (r *userItemRepository) ItemByUserID(ctx context.Context, userID uuid.UUID, itemID string) (*ledger.Item, error) {
 
-	query, args, err := sq.Select(userColumns...).From(userItemTable).Where(sq.Eq{
+	query, args, err := sq.Select(userItemColumns...).From(userItemTable).Where(sq.Eq{
 		"item_id": itemID,
 		"user_id": userID,
 	}).ToSql()
@@ -101,7 +101,7 @@ func (r *userItemRepository) CreateItem(ctx context.Context, item *ledger.Item) 
 		item.ItemStatus,
 		sq.Expr(`NOW()`),
 		sq.Expr(`NOW()`),
-	).ToSql()
+	).Options("IGNORE").ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[CreateItem]")
 	}

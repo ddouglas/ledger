@@ -51,11 +51,13 @@ func (s *server) buildRouter() *chi.Mux {
 	})
 
 	r.Route("/api", func(r chi.Router) {
-		r.Use(s.authorization)
-		r.Get("/items", s.handleGetUserItems)
-		r.Post("/items", s.handlePostUserItems)
-		// r.Get("/items/{itemID}/accounts", s.handleGetItemAccounts)
-		r.Delete("/items/{itemID}", s.handleDeleteUserItem)
+		r.Group(func(r chi.Router) {
+			r.Use(s.authorization)
+			r.Get("/items", s.handleGetUserItems)
+			r.Post("/items", s.handlePostUserItems)
+			// r.Get("/items/{itemID}/accounts", s.handleGetItemAccounts)
+			r.Delete("/items/{itemID}", s.handleDeleteUserItem)
+		})
 
 		r.Route("/external", func(r chi.Router) {
 			r.Route("/plaid", func(r chi.Router) {

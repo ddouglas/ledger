@@ -92,7 +92,7 @@ func (s *service) Item(ctx context.Context, accessToken string) (*ledger.Item, e
 		AccessToken:           accessToken,
 		InstitutionID:         null.StringFromPtr(&plaidItem.InstitutionID),
 		Webhook:               null.StringFromPtr(&plaidItem.Webhook),
-		Error:                 null.NewString(plaidItem.Error.Error(), plaidItem.Error.Error() != ""),
+		Error:                 null.NewString(plaidItem.Error.Error(), plaidItem.Error.ErrorCode != ""),
 		AvailableProducts:     ledger.SliceString(plaidItem.AvailableProducts),
 		BilledProducts:        ledger.SliceString(plaidItem.BilledProducts),
 		ConsentExpirationTime: null.NewTime(plaidItem.ConsentExpirationTime, !plaidItem.ConsentExpirationTime.IsZero()),
