@@ -300,10 +300,29 @@ func actionImporter(c *cli.Context) error {
 
 	core := buildCore()
 
+	accounts := account.New(
+		account.WithAccountRepository(core.repos.account),
+	)
+
+	item := item.New(
+		item.WithAccount(core.repos.account),
+		item.WithGateway(core.gateway),
+		item.WithInstitutionRepository(core.repos.institution),
+		item.WithItemRepository(core.repos.item),
+	)
+
+	transaction := transaction.New(
+		transaction.WithTransactionRepository(core.repos.transaction),
+	)
+
 	importer := importer.New(
 		importer.WithRedis(core.redis),
 		importer.WithGateway(core.gateway),
 		importer.WithLogger(core.logger),
+		importer.WithNewrelic(core.newrelic),
+		importer.WithAccounts(accounts),
+		importer.WithItems(item),
+		importer.WithTransactions(transaction),
 	)
 
 	importer.Run(context.TODO())
