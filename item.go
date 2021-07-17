@@ -47,6 +47,10 @@ func (s ItemStatus) Value() (driver.Value, error) {
 
 func (s *ItemStatus) Scan(value interface{}) error {
 
+	if value == nil {
+		return nil
+	}
+
 	switch data := value.(type) {
 	case []byte:
 		err := json.Unmarshal(data, s)

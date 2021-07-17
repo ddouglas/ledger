@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"context"
-	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ddouglas/ledger"
@@ -43,13 +42,13 @@ func (r *userItemRepository) Item(ctx context.Context, itemID string) (*ledger.I
 		"item_id": itemID,
 	}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query: %w", err)
+		return nil, errors.Wrap(err, "[Item]")
 	}
 
 	var item = new(ledger.Item)
 	err = r.db.GetContext(ctx, item, query, args...)
 
-	return item, err
+	return item, errors.Wrap(err, "[Item]")
 
 }
 
@@ -60,29 +59,29 @@ func (r *userItemRepository) ItemByUserID(ctx context.Context, userID uuid.UUID,
 		"user_id": userID,
 	}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query: %w", err)
+		return nil, errors.Wrap(err, "[ItemByUserID]")
 	}
 
 	var item = new(ledger.Item)
 	err = r.db.GetContext(ctx, item, query, args...)
 
-	return item, err
+	return item, errors.Wrap(err, "[ItemByUserID]")
 
 }
 
 func (r *userItemRepository) ItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*ledger.Item, error) {
 
-	query, args, err := sq.Select(userColumns...).From(userItemTable).Where(sq.Eq{
+	query, args, err := sq.Select(userItemColumns...).From(userItemTable).Where(sq.Eq{
 		"user_id": userID,
 	}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query: %w", err)
+		return nil, errors.Wrap(err, "[ItemsByUserID]")
 	}
 
 	var items = make([]*ledger.Item, 0)
 	err = r.db.SelectContext(ctx, &items, query, args...)
 
-	return items, err
+	return items, errors.Wrap(err, "[ItemsByUserID]")
 
 }
 
@@ -104,12 +103,12 @@ func (r *userItemRepository) CreateItem(ctx context.Context, item *ledger.Item) 
 		sq.Expr(`NOW()`),
 	).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query: %w", err)
+		return nil, errors.Wrap(err, "[CreateItem]")
 	}
 
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert item: %w", err)
+		return nil, errors.Wrap(err, "[CreateItem]")
 	}
 
 	return r.ItemByUserID(ctx, item.UserID, item.ItemID)
@@ -133,12 +132,12 @@ func (r *userItemRepository) UpdateItem(ctx context.Context, itemID string, item
 		Set("updated_at", sq.Expr(`NOW()`)).
 		Where(sq.Eq{"item_id": item.ItemID, "user_id": item.UserID}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query: %w", err)
+		return nil, errors.Wrap(err, "[UpdateItem]")
 	}
 
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert item: %w", err)
+		return nil, errors.Wrap(err, "[UpdateItem]")
 	}
 
 	return r.ItemByUserID(ctx, item.UserID, item.ItemID)
@@ -150,14 +149,14 @@ func (r *userItemRepository) DeleteItem(ctx context.Context, userID uuid.UUID, i
 	query, args, err := sq.Delete(userItemTable).Where(sq.Eq{"item_id": itemID, "user_id": userID}).ToSql()
 
 	if err != nil {
-		return errors.Wrap(err, "failed to generate query")
+		return errors.Wrap(err, "[DeleteItem]")
 	}
 
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return errors.Wrap(err, "failed to insert item")
+		return errors.Wrap(err, "[DeleteItem]")
 	}
 
-	return errors.Wrap(err, "failed to insert item")
+	return errors.Wrap(err, "[DeleteItem]")
 
 }
