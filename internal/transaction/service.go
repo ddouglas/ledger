@@ -12,6 +12,7 @@ import (
 )
 
 type Service interface {
+	ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error
 	ledger.TransactionRepository
 }
 

@@ -113,7 +113,7 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 		// unhandled webhook code received
 	}
 
-	transactions, err := s.gateway.GetTransactions(ctx, item.AccessToken, start, end)
+	transactions, err := s.gateway.Transactions(ctx, item.AccessToken, start, end)
 	if err != nil {
 		s.logger.WithError(err).Error("failed to fetch transactions")
 		return

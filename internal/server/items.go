@@ -25,6 +25,21 @@ func (s *server) handleGetUserItems(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(ctx, w, http.StatusOK, items)
 
 }
+func (s *server) handleGetItemAccounts(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+
+	user := internal.UserFromContext(ctx)
+
+	accounts, err := s.item.ItemAccountsByUserID(ctx, user.ID)
+	if err != nil {
+		s.writeError(ctx, w, http.StatusForbidden, err)
+		return
+	}
+
+	s.writeResponse(ctx, w, http.StatusOK, accounts)
+
+}
 
 func (s *server) handlePostUserItems(w http.ResponseWriter, r *http.Request) {
 

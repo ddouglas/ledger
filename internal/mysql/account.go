@@ -7,6 +7,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ddouglas/ledger"
+	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/volatiletech/null"
 )
@@ -123,7 +124,7 @@ func (r *accountRepository) Accounts(ctx context.Context, itemID string) ([]*led
 
 }
 
-func (r *accountRepository) AccountsByUserID(ctx context.Context, userID string) ([]*ledger.Account, error) {
+func (r *accountRepository) AccountsByUserID(ctx context.Context, userID uuid.UUID) ([]*ledger.Account, error) {
 
 	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"user_id": userID}).ToSql()
 	if err != nil {

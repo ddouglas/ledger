@@ -10,6 +10,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gofrs/uuid v4.0.0+incompatible
+	github.com/jinzhu/copier v0.3.2
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/joho/godotenv v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -18,6 +19,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext/nrlogrusplugin v1.0.1
 	github.com/plaid/plaid-go v0.0.0-20210525182452-1d0b06713a96
 	github.com/sirupsen/logrus v1.8.1
+	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/null v8.0.0+incompatible

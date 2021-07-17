@@ -11,6 +11,7 @@ import (
 )
 
 type Service interface {
+	ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error)
 	RegisterItem(ctx context.Context, request *ledger.RegisterItemRequest) (*ledger.Item, error)
 	ledger.ItemRepository
 }
@@ -21,6 +22,13 @@ func New(optFuncs ...configOption) Service {
 		optFunc(s)
 	}
 	return s
+}
+
+func (s *service) ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error) {
+
+	// Ensure Item exists
+	item, err := s.ItemByUserID(ctx, userID, itemID)
+
 }
 
 func (s *service) ItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*ledger.Item, error) {
@@ -72,7 +80,7 @@ func (s *service) RegisterItem(ctx context.Context, request *ledger.RegisterItem
 
 		for _, account := range accounts {
 			if knownAccount, ok := mapRequestAccounts[account.AccountID]; ok {
-				if knownAccount.Mask == account.Mask && account.Name == knownAccount.Name {
+				if knownAccount.Mask == account.Mask.String && account.Name.String == knownAccount.Name {
 					shouldRegister = false
 					break
 				}

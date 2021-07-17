@@ -50,27 +50,34 @@ func (s *server) buildRouter() *chi.Mux {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	r.Route("/external", func(r chi.Router) {
-		r.Route("/plaid", func(r chi.Router) {
-			r.Route("/v1", func(r chi.Router) {
-				r.Post("/webhook", s.handlePlaidPostV1Webhook)
+	r.Route("/api", func(r chi.Router) {
 
-				r.Group(func(r chi.Router) {
-					r.Use(s.authorization)
+		r.Get("/items", s.handleGetUserItems)
+		r.Post("/items", s.handlePostUserItems)
+		// r.Get("/items/{itemID}/accounts", s.handleGetItemAccounts)
+		r.Delete("/items/{itemID}", s.handleDeleteUserItem)
 
-					r.Get("/link/token", s.handlePlaidGetLinkToken)
+		r.Route("/external", func(r chi.Router) {
+			r.Route("/plaid", func(r chi.Router) {
+				r.Route("/v1", func(r chi.Router) {
+					r.Post("/webhook", s.handlePlaidPostV1Webhook)
+
+					r.Group(func(r chi.Router) {
+						r.Use(s.authorization)
+
+						r.Get("/link/token", s.handlePlaidGetLinkToken)
+					})
+
 				})
-
 			})
-		})
-		r.Route("/auth0", func(r chi.Router) {
-			r.Route("/v1", func(r chi.Router) {
-				r.Post("/login", s.handleAuth0PostEmailExchange)
-				r.Post("/exchange", s.handleAuth0PostCodeExchange)
+			r.Route("/auth0", func(r chi.Router) {
+				r.Route("/v1", func(r chi.Router) {
+					r.Post("/login", s.handleAuth0PostEmailExchange)
+					r.Post("/exchange", s.handleAuth0PostCodeExchange)
+				})
 			})
 		})
 	})
-
 	return r
 }
 
