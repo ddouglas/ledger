@@ -48,19 +48,22 @@ func (r *accountRepository) Account(ctx context.Context, itemID string, accountI
 
 	rows, err := r.db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to query accounts: %w", err)
+		return nil, fmt.Errorf("failed to query accounts: %w", err)
 	}
 
+	defer rows.Close()
+	var accounts = make([]*ledger.Account, 0)
 	for rows.Next() {
+		
 		var (
 			item_id                  string
 			account_id               string
 			mask                     null.String
 			name                     null.String
 			official_name            null.String
-			balance_available        null.Float64
-			balance_current          null.Float64
-			balance_limit            null.Float64
+			balance_available        float64
+			balance_current          float64
+			balance_limit            float64
 			balance_last_updated     null.Time
 			iso_currency_code        string
 			unofficial_currency_code string
@@ -69,6 +72,35 @@ func (r *accountRepository) Account(ctx context.Context, itemID string, accountI
 			created_at               time.Time
 			updated_at               time.Time
 		)
+
+		err = rows.Scan(
+			item_id, account_id, mask, name,
+			official_name, balance_available, balance_current, balance_limit,
+			balance_last_updated, iso_currency_code, unofficial_currency_code, subtype,
+			accountType, created_at, updated_at,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("faild to scan row: %w", err)
+		}
+
+account := &ledger.Account{
+	ItemID: item_id,
+	AccountID: account_id,
+	Mask: mask,
+	Name: name,
+	OfficialName: official_name,
+	Subtype: subtype,
+	Type: accountType,
+	CreatedAt: created_at,
+	UpdatedAt: updated_at,
+	Balance: &ledger.AccountBalance{
+		Available: ,
+	},
+}
+
+		accounts = append(accounts, &ledger.Account{
+			
+		})
 
 	}
 
