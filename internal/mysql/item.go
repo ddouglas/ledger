@@ -8,6 +8,7 @@ import (
 	"github.com/ddouglas/ledger"
 	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 )
 
 type userItemRepository struct {
@@ -145,5 +146,18 @@ func (r *userItemRepository) UpdateItem(ctx context.Context, itemID string, item
 }
 
 func (r *userItemRepository) DeleteItem(ctx context.Context, userID uuid.UUID, itemID string) error {
-	return nil
+
+	query, args, err := sq.Delete(userItemTable).Where(sq.Eq{"item_id": itemID, "user_id": userID}).ToSql()
+
+	if err != nil {
+		return errors.Wrap(err, "failed to generate query")
+	}
+
+	_, err = r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return errors.Wrap(err, "failed to insert item")
+	}
+
+	return errors.Wrap(err, "failed to insert item")
+
 }

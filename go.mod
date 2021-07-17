@@ -17,6 +17,7 @@ require (
 	github.com/lestrrat-go/jwx v1.2.1
 	github.com/newrelic/go-agent/v3 v3.13.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext/nrlogrusplugin v1.0.1
+	github.com/pkg/errors v0.9.1
 	github.com/plaid/plaid-go v0.0.0-20210525182452-1d0b06713a96
 	github.com/sirupsen/logrus v1.8.1
 	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6

@@ -11,7 +11,7 @@ import (
 )
 
 type Service interface {
-	ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error)
+	// ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error)
 	RegisterItem(ctx context.Context, request *ledger.RegisterItemRequest) (*ledger.Item, error)
 	ledger.ItemRepository
 }
@@ -24,12 +24,22 @@ func New(optFuncs ...configOption) Service {
 	return s
 }
 
-func (s *service) ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error) {
+// func (s *service) ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error) {
 
-	// Ensure Item exists
-	item, err := s.ItemByUserID(ctx, userID, itemID)
+// 	// Ensure Item exists
+// 	item, err := s.ItemByUserID(ctx, userID, itemID)
+// 	if err != nil {
+// 		return nil, errors.Wrap(err, "failed to fetch item for that item id")
+// 	}
 
-}
+// 	// accounts, err := s.account.AccountsByItemID(ctx, item.ItemID)
+// 	// if err != nil {
+// 	// 	return nil, errors.Wrap(err, "failed to fetch accounts by item id")
+// 	// }
+
+// 	return nil, nil
+
+// }
 
 func (s *service) ItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*ledger.Item, error) {
 
