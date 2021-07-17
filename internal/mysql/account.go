@@ -279,7 +279,37 @@ func (r *accountRepository) AccountsByItemID(ctx context.Context, itemID string)
 
 func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.Account) (*ledger.Account, error) {
 
-	query, args, err := sq.Insert(accountTable).SetMap()
+	mapColValues := map[string]interface{}{
+		"item_id":       account.ItemID,
+		"account_id":    account.AccountID,
+		"mask":          account.Mask,
+		"name":          account.Name,
+		"official_name": account.OfficialName,
+		"subtype":       account.Subtype,
+		"type":          account.Type,
+		"created_at":    sq.Expr(`NOW()`),
+		"updated_at":    sq.Expr(`NOW()`),
+	}
+
+	if account.Balance != nil {
+		mapColValues["balance_available"] = account.Balance.Available
+		mapColValues["balance_current"] = account.Balance.Current
+		mapColValues["balance_limit"] = account.Balance.Limit
+		mapColValues["balance_last_updated"] = account.Balance.LastUpdated
+		mapColValues["unofficial_currency_code"] = account.Balance.UnofficialCurrencyCode
+		mapColValues["iso_currency_code"] = account.Balance.ISOCurrencyCode
+	}
+
+	query, args, err := sq.Insert(accountTable).SetMap(mapColValues).ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate query")
+	}
+
+	fmt.Println(query)
+	fmt.Println(args...)
+
+	return nil, nil
+
 }
 
 func (r *accountRepository) UpdateAccount(ctx context.Context, itemID, accountID string, account *ledger.Account) (*ledger.Account, error) {
