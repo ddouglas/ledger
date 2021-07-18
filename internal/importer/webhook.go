@@ -23,8 +23,13 @@ type WebhookMessage struct {
 	Error           *plaid.Error `json:"error,omitempty"`
 	NewTransactions int          `json:"new_transactions"`
 	// Custom Fields
-	StartDate time.Time `json:"startDate,omitempty"`
-	EndDate   time.Time `json:"endDate,omitempty"`
+	StartDate time.Time              `json:"startDate,omitempty"`
+	EndDate   time.Time              `json:"endDate,omitempty"`
+	Options   *WebhookMessageOptions `json:"options,omitempty"`
+}
+
+type WebhookMessageOptions struct {
+	AccountIDs []string `json:"accountIDs,omitempty"`
 }
 
 func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMessage) error {
@@ -43,10 +48,6 @@ func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMes
 
 // PublishCustomWebhookMessage
 func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *WebhookMessage) error {
-
-	if webhook.ItemID == "" {
-		return errors.New("itemID is required")
-	}
 
 	if webhook.StartDate.IsZero() || webhook.EndDate.IsZero() {
 		return errors.New("startDate and endDate are required")

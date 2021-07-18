@@ -61,6 +61,23 @@ func (s *server) handleUpdateTransactions(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	itemID := chi.URLParam(r, "itemID")
+	if itemID == "" {
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("itemID is required"))
+		return
+	}
+
+	accountID := chi.URLParam(r, "accountID")
+	if accountID == "" {
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("accountID is required"))
+		return
+	}
+
+	message.ItemID = itemID
+	message.Options = &importer.WebhookMessageOptions{
+		AccountIDs: []string{accountID},
+	}
+
 	err = s.importer.PublishCustomWebhookMessage(ctx, message)
 	if err != nil {
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to process refresh request"))
