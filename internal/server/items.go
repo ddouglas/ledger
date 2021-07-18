@@ -67,6 +67,12 @@ func (s *server) handleGetItemAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err := s.item.ItemByUserID(ctx, user.ID, itemID)
+	if err != nil {
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to verify item ownership"))
+		return
+	}
+
 	account, err := s.account.Account(ctx, itemID, accountID)
 	if err != nil {
 		s.writeError(ctx, w, http.StatusBadRequest, err)
