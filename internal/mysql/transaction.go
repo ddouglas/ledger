@@ -62,7 +62,14 @@ func (r *transactionRepository) Transaction(ctx context.Context, itemID, transac
 
 func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, itemID, accountID string) ([]*ledger.Transaction, error) {
 
-	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{"item_id": itemID, "account_id": accountID}).ToSql()
+	query, args, err := sq.Select(transactionColumns...).
+		From(tableName).
+		Where(sq.Eq{
+			"item_id":    itemID,
+			"account_id": accountID,
+		}).
+		OrderBy("date desc").
+		ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[mysql.TransactionsByAccountID]")
 	}
