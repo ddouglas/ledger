@@ -50,6 +50,7 @@ func (s *service) Run() {
 		data, err := s.redis.LPop(ctx, gateway.PubSubPlaidWebhook).Result()
 		if err != nil && err.Error() != redis.Nil {
 			entry.WithError(err).Error("failed to fetch messages from queue")
+			txn.NoticeError(err)
 			sleep()
 			continue
 		}
@@ -61,16 +62,18 @@ func (s *service) Run() {
 			continue
 		}
 
-		s.logger.WithField("message", data).Info("webhook received, dispatching processor")
+		entry.WithField("message", data).Info("webhook received, dispatching processor")
 		var message = new(WebhookMessage)
 		err = json.Unmarshal([]byte(data), message)
 		if err != nil {
 			entry.WithError(err).Error("failed to decode message")
+			txn.NoticeError(err)
 			continue
 		}
 
 		s.processMessage(ctx, message)
-		s.logger.Info("processor")
+		s.logger.Info("message processed successfully")
+		txn.End()
 		sleep()
 
 	}
@@ -83,16 +86,11 @@ func sleep() {
 
 func (s *service) processMessage(ctx context.Context, message *WebhookMessage) {
 
-	txn := s.newrelic.StartTransaction("Process Webhook Message")
-	defer txn.End()
-	ctx = newrelic.NewContext(ctx, s.newrelic.StartTransaction("Process Webhook Message"))
-	_ = s.logger.WithContext(ctx).WithField("service", "Importer")
-
 	switch message.WebhookType {
 	case "TRANSACTIONS":
 		s.processTransactionUpdate(ctx, message)
 	default:
-		s.logger.WithField("message_type", message.WebhookType).Error("recieved message with unhandled webhook type")
+		s.logger.WithContext(ctx).WithField("message", message).Error("recieved message with unhandled webhook type")
 	}
 
 }
