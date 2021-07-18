@@ -1,10 +1,12 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/ddouglas/ledger/internal"
+	"github.com/ddouglas/ledger/internal/importer"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -46,4 +48,24 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 	s.writeResponse(ctx, w, http.StatusOK, transactions)
 
+}
+
+func (s *server) handleUpdateTransactions(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+
+	var message = new(importer.WebhookMessage)
+	err := json.NewDecoder(r.Body).Decode(message)
+	if err != nil {
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to decode request body"))
+		return
+	}
+
+	err = s.importer.PublishWebhookMessage(ctx, message)
+	if err != nil {
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to process refresh request"))
+		return
+	}
+
+	s.writeResponse(ctx, w, http.StatusNoContent, nil)
 }

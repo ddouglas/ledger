@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/lestrrat-go/jwx/jwk"
@@ -20,6 +21,9 @@ type WebhookMessage struct {
 	ItemID          string       `json:"item_id"`
 	Error           *plaid.Error `json:"error,omitempty"`
 	NewTransactions int          `json:"new_transactions"`
+	// Custom Fields
+	StartDate time.Time `json:"startDate,omitempty"`
+	EndDate   time.Time `json:"endDate,omitempty"`
 }
 
 func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMessage) error {

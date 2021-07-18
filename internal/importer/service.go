@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -48,14 +49,14 @@ func (s *service) Run() {
 		entry.Info("checking message queue")
 
 		data, err := s.redis.LPop(ctx, gateway.PubSubPlaidWebhook).Result()
-		if err != nil && err != redis.Nil {
+		if err != nil && !errors.Is(err, redis.Nil) {
 			entry.WithError(err).Error("failed to fetch messages from queue")
 			txn.NoticeError(err)
 			sleep()
 			continue
 		}
 
-		if err != nil && err.Error() == redis.Nil {
+		if err != nil && errors.Is(err, redis.Nil) {
 			entry.Info("received nil, going to sleep")
 			txn.Ignore()
 			sleep()
