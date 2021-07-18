@@ -2,67 +2,68 @@ package ledger
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 )
 
 type TimeFilter struct {
-	operation Operation
-	time      time.Time
+	Operation Operation
+	Time      time.Time
 }
 
-func NewTimeFilter(op Operation, t time.Time) (TimeFilter, error) {
+func NewTimeFilter(op Operation, t time.Time) (*TimeFilter, error) {
 	if !op.IsValid() {
-		return TimeFilter{}, fmt.Errorf("operation %s is not valid", string(op))
+		return nil, fmt.Errorf("operation %s is not valid", string(op))
 	}
 
-	return TimeFilter{
+	return &TimeFilter{
 		op, t,
 	}, nil
 }
 
 func (f TimeFilter) ToSql(column string) sq.Sqlizer {
-	return f.operation.ToSqlizer(column, f.time)
+	return f.Operation.ToSqlizer(column, f.Time)
 }
 
 type StringFilter struct {
-	operation Operation
-	str       string
+	Operation Operation
+	String    string
 }
 
-func NewStringFilter(op Operation, str string) (StringFilter, error) {
+func NewStringFilter(op Operation, str string) (*StringFilter, error) {
 	if !op.IsValid() {
-		return StringFilter{}, fmt.Errorf("operation %s is not valid", string(op))
+		return nil, fmt.Errorf("operation %s is not valid", string(op))
 	}
 
-	return StringFilter{
+	return &StringFilter{
 		op, str,
 	}, nil
 
 }
 
 func (f StringFilter) ToSql(column string) sq.Sqlizer {
-	return f.operation.ToSqlizer(column, f.str)
+	return f.Operation.ToSqlizer(column, f.String)
 }
 
 type NumberFilter struct {
-	operation Operation
-	number    int64
+	Operation Operation
+	Number    int64
 }
 
-func NewNumberFilter(op Operation, number int64) (NumberFilter, error) {
+func NewNumberFilter(op Operation, number int64) (*NumberFilter, error) {
 	if !op.IsValid() {
-		return NumberFilter{}, fmt.Errorf("operation %s is not valid", string(op))
+		return nil, fmt.Errorf("operation %s is not valid", string(op))
 	}
 
-	return NumberFilter{
+	return &NumberFilter{
 		op, number,
 	}, nil
 }
 
 func (f NumberFilter) ToSql(column string) sq.Sqlizer {
-	return f.operation.ToSqlizer(column, f.number)
+	return f.Operation.ToSqlizer(column, f.Number)
 }
 
 type OrderByFilter struct {
@@ -80,8 +81,8 @@ func NewOrderByFilter(d Direction, c string) (OrderByFilter, error) {
 	}, nil
 }
 
-func (o OrderByFilter) ToSql() sq.Sqlizer {
-
+func (o OrderByFilter) ToSql() string {
+	return fmt.Sprintf("%s %s", o.column, strings.ToUpper(string(o.direction)))
 }
 
 type Operation string

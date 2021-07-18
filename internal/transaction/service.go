@@ -83,9 +83,9 @@ func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID
 			return nil, errors.New("unable to filter on unknown transaction")
 		}
 
-		filters.FromIterator = &ledger.NumberFilter{
-			Number:    int(transaction.Iterator),
-			Operation: filters.FromTransactionID.Operation,
+		filters.FromIterator, err = ledger.NewNumberFilter(ledger.LtOperation, int64(transaction.Iterator))
+		if err != nil {
+			return nil, err
 		}
 		filters.FromTransactionID = nil
 	}
