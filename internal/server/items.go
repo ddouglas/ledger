@@ -26,6 +26,7 @@ func (s *server) handleGetUserItems(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(ctx, w, http.StatusOK, items)
 
 }
+
 func (s *server) handleGetItemAccounts(w http.ResponseWriter, r *http.Request) {
 
 	var ctx = r.Context()
@@ -45,6 +46,34 @@ func (s *server) handleGetItemAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.writeResponse(ctx, w, http.StatusOK, accounts)
+
+}
+
+func (s *server) handleGetItemAccount(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+
+	user := internal.UserFromContext(ctx)
+
+	itemID := chi.URLParam(r, "itemID")
+	if itemID == "" {
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("itemID is required"))
+		return
+	}
+
+	accountID := chi.URLParam(r, "accountID")
+	if itemID == "" {
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("itemID is required"))
+		return
+	}
+
+	account, err := s.account.Account(ctx, itemID, accountID)
+	if err != nil {
+		s.writeError(ctx, w, http.StatusBadRequest, err)
+		return
+	}
+
+	s.writeResponse(ctx, w, http.StatusOK, account)
 
 }
 
