@@ -5,12 +5,12 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
 	"github.com/ddouglas/ledger/internal/importer"
 	"github.com/go-chi/chi/v5"
+	"github.com/volatiletech/null"
 )
 
 func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Request) {
@@ -43,31 +43,25 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	var pagination *ledger.TransactionPagination
-	 := r.URL.Query().Get("fromTransactionID")
+	var filters *ledger.TransactionFilter
+	fromTransactionID := r.URL.Query().Get("fromTransactionID")
 	count := r.URL.Query().Get("count")
-	if fromDate != "" && count != "" {
-		parsedFromDate, err := time.Parse("2006-01-02", fromDate)
-		if err != nil {
-			s.logger.WithError(err).Error()
-			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse date in fromDate query param to valid date"))
-			return
-		}
+	if fromTransactionID != "" && count != "" {
 
 		parsedCount, err := strconv.ParseUint(count, 10, 64)
 		if err != nil {
 			s.logger.WithError(err).Error()
-			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in fromDate query param to valid uint64"))
+			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in count query param to valid uint64"))
 			return
 		}
 
-		pagination = &ledger.TransactionFilter{
-			FromTransactionID: ledger.StringFilter{String: parsedFromDate},
-			Count:    parsedCount,
+		filters = &ledger.TransactionFilter{
+			FromTransactionID: &ledger.StringFilter{String: fromTransactionID, Operation: ledger.LtOperation},
+			Count:             null.Uint64From(parsedCount),
 		}
 	}
 
-	transactions, err := s.transaction.TransactionsByAccountID(ctx, itemID, accountID, pagination)
+	transactions, err := s.transaction.TransactionsByAccountID(ctx, itemID, accountID, filters)
 	if err != nil {
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))
 		return

@@ -60,7 +60,7 @@ func (r *transactionRepository) Transaction(ctx context.Context, itemID, transac
 
 }
 
-func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilters) ([]*ledger.Transaction, error) {
+func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
 
 	stmt := sq.Select(transactionColumns...).
 		From(tableName).

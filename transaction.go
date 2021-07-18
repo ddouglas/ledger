@@ -14,7 +14,7 @@ import (
 
 type TransactionRepository interface {
 	Transaction(ctx context.Context, itemID, transactionID string) (*Transaction, error)
-	TransactionsByAccountID(ctx context.Context, itemID, accountID string, pagination *TransactionPagination) ([]*Transaction, error)
+	TransactionsByAccountID(ctx context.Context, itemID, accountID string, pagination *TransactionFilter) ([]*Transaction, error)
 	TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*Transaction, error)
 	CreateTransaction(ctx context.Context, transaction *Transaction) (*Transaction, error)
 	UpdateTransaction(ctx context.Context, transactionID string, transaction *Transaction) (*Transaction, error)
@@ -49,8 +49,8 @@ type Transaction struct {
 }
 
 type TransactionFilter struct {
-	FromTransactionID StringFilter `json:"transactionID"`
-	Count             uint64       `json:"count"`
+	FromTransactionID *StringFilter `json:"transactionID"`
+	Count             null.Uint64   `json:"count"`
 }
 
 func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {

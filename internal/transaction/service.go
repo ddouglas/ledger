@@ -4,10 +4,10 @@ package transaction
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/ddouglas/ledger"
+	"github.com/pkg/errors"
 	"github.com/ulule/deepcopier"
 )
 
@@ -71,6 +71,19 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 	}
 
 	return nil
+
+}
+
+func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
+
+	if filters != nil && filters.FromTransactionID != nil {
+		transaction, err := s.Transaction(ctx, itemID, filters.FromTransactionID.String)
+		if err != nil {
+			return nil, errors.Wrap()
+		}
+	}
+
+	return s.TransactionRepository.TransactionsByAccountID(ctx, itemID, accountID, filters)
 
 }
 
