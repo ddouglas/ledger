@@ -2,16 +2,14 @@ package account
 
 import (
 	"github.com/ddouglas/ledger"
-	"github.com/ddouglas/ledger/internal/cache"
-	"github.com/ddouglas/ledger/internal/gateway"
 )
 
 type configOption func(s *service)
 
 type service struct {
-	cache cache.Service
+	// cache cache.Service
 
-	gateway gateway.Service
+	// gateway gateway.Service
 	ledger.AccountRepository
 }
 
