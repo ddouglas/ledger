@@ -57,6 +57,7 @@ func (s *server) handleUpdateTransactions(w http.ResponseWriter, r *http.Request
 	var message = new(importer.WebhookMessage)
 	err := json.NewDecoder(r.Body).Decode(message)
 	if err != nil {
+		s.logger.WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to decode request body"))
 		return
 	}

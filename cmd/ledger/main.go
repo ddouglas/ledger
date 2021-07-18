@@ -312,6 +312,7 @@ func actionImporter(c *cli.Context) error {
 	)
 
 	transaction := transaction.New(
+		transaction.WithLogger(core.logger),
 		transaction.WithTransactionRepository(core.repos.transaction),
 	)
 

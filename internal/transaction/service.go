@@ -28,32 +28,44 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 	for _, plaidTransaction := range newTrans {
 
+		entry := s.logger.WithContext(ctx)
+		entry = entry.WithField("transaction_id", plaidTransaction.TransactionID)
+		entry.Info("processing transaction")
+
 		transaction, err := s.Transaction(ctx, item.ItemID, plaidTransaction.TransactionID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			entry.WithError(err).Error()
 			return fmt.Errorf("failed to fetch transactions from DB")
 		}
 
 		if errors.Is(err, sql.ErrNoRows) {
 
+			entry.Info("new transaction detected, creating record")
+
 			plaidTransaction.ItemID = item.ItemID
 
 			_, err := s.CreateTransaction(ctx, plaidTransaction)
 			if err != nil {
-				return fmt.Errorf("failed to insert transaction %s into DB: %w", plaidTransaction.TransactionID, err)
+				entry.WithError(err).Error()
+				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
 			}
 
 			continue
 
 		}
 
+		entry.Info("existing transaction discover, updating record")
+
 		err = deepcopier.Copy(plaidTransaction).To(transaction)
 		if err != nil {
-			return fmt.Errorf("failed to copy plaidTransaction to ledgerTransaction:%w", err)
+			entry.WithError(err).Error()
+			return fmt.Errorf("failed to copy plaidTransaction to ledgerTransaction")
 		}
 
 		_, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
 		if err != nil {
-			return fmt.Errorf("failed to update transaction %s: %w", transaction.TransactionID, err)
+			entry.WithError(err).Error()
+			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
 		}
 
 	}
