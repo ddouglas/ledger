@@ -58,6 +58,8 @@ func (s *server) buildRouter() *chi.Mux {
 			r.Get("/items/{itemID}/accounts", s.handleGetItemAccounts)
 			r.Get("/items/{itemID}/accounts/{accountID}", s.handleGetItemAccount)
 			r.Delete("/items/{itemID}", s.handleDeleteUserItem)
+
+			r.Get("/items/{itemID}/accounts/{accountID}/transactions", s.handleGetAccountTransactions)
 		})
 
 		r.Route("/external", func(r chi.Router) {

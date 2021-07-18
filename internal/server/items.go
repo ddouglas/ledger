@@ -62,8 +62,8 @@ func (s *server) handleGetItemAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accountID := chi.URLParam(r, "accountID")
-	if itemID == "" {
-		s.writeError(ctx, w, http.StatusBadRequest, errors.New("itemID is required"))
+	if accountID == "" {
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("accountID is required"))
 		return
 	}
 

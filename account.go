@@ -10,7 +10,7 @@ import (
 )
 
 type AccountRepository interface {
-	Account(ctx context.Context, accountID string) (*Account, error)
+	Account(ctx context.Context, itemID string, accountID string) (*Account, error)
 	Accounts(ctx context.Context, itemID string) ([]*Account, error)
 	AccountsByItemID(ctx context.Context, itemID string) ([]*Account, error)
 	AccountsByUserID(ctx context.Context, userID uuid.UUID) ([]*Account, error)
