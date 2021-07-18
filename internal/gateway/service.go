@@ -164,7 +164,7 @@ func (s *service) Accounts(ctx context.Context, accessToken string) ([]*ledger.A
 	var accounts = make([]*ledger.Account, 0, len(response.Accounts))
 	for _, plaidAccount := range response.Accounts {
 		account := new(ledger.Account)
-		account.fromPlaidAccount(plaidAccount)
+		account.FromPlaidAccount(response.Item.ItemID, plaidAccount)
 		accounts = append(accounts, account)
 
 	}

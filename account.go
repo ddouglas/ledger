@@ -34,19 +34,21 @@ type Account struct {
 
 func (a *Account) FromPlaidAccount(itemID string, account plaid.Account) {
 
-	a.ItemID = itemID
-	a.AccountID = account.AccountID
-	a.Mask = null.NewString(account.Mask, account.Mask != "")
-	a.Name = null.NewString(account.Name, account.Name != "")
-	a.OfficialName = null.NewString(account.OfficialName, account.OfficialName != "")
-	a.Subtype = null.NewString(account.Subtype, account.Subtype != "")
-	a.Type = null.NewString(account.Type, account.Type != "")
-	a.Balance = &AccountBalance{
-		Available:              account.Balances.Available,
-		Current:                account.Balances.Current,
-		Limit:                  account.Balances.Limit,
-		ISOCurrencyCode:        account.Balances.ISOCurrencyCode,
-		UnofficialCurrencyCode: null.NewString(account.Balances.UnofficialCurrencyCode, account.Balances.UnofficialCurrencyCode != ""),
+	*a = Account{
+		ItemID:       itemID,
+		AccountID:    account.AccountID,
+		Mask:         null.NewString(account.Mask, account.Mask != ""),
+		Name:         null.NewString(account.Name, account.Name != ""),
+		OfficialName: null.NewString(account.OfficialName, account.OfficialName != ""),
+		Subtype:      null.NewString(account.Subtype, account.Subtype != ""),
+		Type:         null.NewString(account.Type, account.Type != ""),
+		Balance: &AccountBalance{
+			Available:              account.Balances.Available,
+			Current:                account.Balances.Current,
+			Limit:                  account.Balances.Limit,
+			ISOCurrencyCode:        account.Balances.ISOCurrencyCode,
+			UnofficialCurrencyCode: null.NewString(account.Balances.UnofficialCurrencyCode, account.Balances.UnofficialCurrencyCode != ""),
+		},
 	}
 
 }
