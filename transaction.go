@@ -24,6 +24,7 @@ type Transaction struct {
 	ItemID                 string      `db:"item_id" json:"itemID" deepcopier:"skip"`
 	AccountID              string      `db:"account_id" json:"accountID"`
 	TransactionID          string      `db:"transaction_id" json:"transactionID"`
+	Iterator               uint        `db:"iterator" json:"-"`
 	PendingTransactionID   null.String `db:"pending_transaction_id" json:"pendingTransactionID"`
 	CategoryID             null.String `db:"category_id" json:"categoryID"`
 	Name                   string      `db:"name" json:"name"`
@@ -49,8 +50,9 @@ type Transaction struct {
 }
 
 type TransactionFilter struct {
-	FromTransactionID *StringFilter `json:"transactionID"`
-	Count             null.Uint64   `json:"count"`
+	FromTransactionID *StringFilter
+	FromIterator      *NumberFilter
+	Count             null.Uint64 `json:"count"`
 }
 
 func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {

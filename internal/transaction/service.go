@@ -79,8 +79,15 @@ func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID
 	if filters != nil && filters.FromTransactionID != nil {
 		transaction, err := s.Transaction(ctx, itemID, filters.FromTransactionID.String)
 		if err != nil {
-			return nil, errors.Wrap()
+			s.logger.WithError(err).Errorln()
+			return nil, errors.New("unable to filter on unknown transaction")
 		}
+
+		filters.FromIterator = &ledger.NumberFilter{
+			Number:    int(transaction.Iterator),
+			Operation: filters.FromTransactionID.Operation,
+		}
+		filters.FromTransactionID = nil
 	}
 
 	return s.TransactionRepository.TransactionsByAccountID(ctx, itemID, accountID, filters)
