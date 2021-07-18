@@ -23,7 +23,7 @@ func NewTimeFilter(op Operation, t time.Time) (*TimeFilter, error) {
 	}, nil
 }
 
-func (f TimeFilter) ToSql(column string) sq.Sqlizer {
+func (f TimeFilter) ToSql(column string) map[string]interface{} {
 	return f.Operation.ToSqlizer(column, f.Time)
 }
 
@@ -43,7 +43,7 @@ func NewStringFilter(op Operation, str string) (*StringFilter, error) {
 
 }
 
-func (f StringFilter) ToSql(column string) sq.Sqlizer {
+func (f StringFilter) ToSql(column string) map[string]interface{} {
 	return f.Operation.ToSqlizer(column, f.String)
 }
 
@@ -62,7 +62,7 @@ func NewNumberFilter(op Operation, number int64) (*NumberFilter, error) {
 	}, nil
 }
 
-func (f NumberFilter) ToSql(column string) sq.Sqlizer {
+func (f NumberFilter) ToSql(column string) map[string]interface{} {
 	return f.Operation.ToSqlizer(column, f.Number)
 }
 
@@ -71,12 +71,12 @@ type OrderByFilter struct {
 	direction Direction
 }
 
-func NewOrderByFilter(d Direction, c string) (OrderByFilter, error) {
+func NewOrderByFilter(d Direction, c string) (*OrderByFilter, error) {
 	if !d.IsValid() {
-		return OrderByFilter{}, fmt.Errorf("%s is not a valid order by direction", string(d))
+		return nil, fmt.Errorf("%s is not a valid order by direction", string(d))
 	}
 
-	return OrderByFilter{
+	return &OrderByFilter{
 		c, d,
 	}, nil
 }
@@ -113,7 +113,7 @@ func (o Operation) IsValid() bool {
 	return false
 }
 
-func (o Operation) ToSqlizer(column string, value interface{}) sq.Sqlizer {
+func (o Operation) ToSqlizer(column string, value interface{}) map[string]interface{} {
 	switch o {
 	case EqOperation:
 		return sq.Eq{column: value}
