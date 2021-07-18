@@ -70,14 +70,16 @@ func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, ite
 		}).
 		OrderBy("date desc")
 	if pagination != nil {
-		stmt.Where(sq.LtOrEq{"date": pagination.FromDate})
-		stmt.Limit(pagination.Count)
+		stmt = stmt.Where(sq.LtOrEq{"date": pagination.FromDate}).Limit(pagination.Count)
 	}
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[mysql.TransactionsByAccountID]")
 	}
+
+	fmt.Println(query)
+	fmt.Println(args...)
 
 	var transactions = make([]*ledger.Transaction, 0)
 	err = r.db.SelectContext(ctx, &transactions, query, args...)
