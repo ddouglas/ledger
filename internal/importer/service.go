@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ddouglas/ledger/internal/gateway"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
 )
@@ -48,7 +48,7 @@ func (s *service) Run() {
 		entry.Info("checking message queue")
 
 		data, err := s.redis.LPop(ctx, gateway.PubSubPlaidWebhook).Result()
-		if err != nil && err.Error() != redis.Nil {
+		if err != nil && err != redis.Nil {
 			entry.WithError(err).Error("failed to fetch messages from queue")
 			txn.NoticeError(err)
 			sleep()
@@ -97,27 +97,36 @@ func (s *service) processMessage(ctx context.Context, message *WebhookMessage) {
 
 func (s *service) processTransactionUpdate(ctx context.Context, message *WebhookMessage) {
 
+	txn := newrelic.FromContext(ctx)
+	entry := s.logger.WithContext(ctx)
+
+	seg := txn.StartSegment("checking for existing item")
 	existingItem, err := s.item.Item(ctx, message.ItemID)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to fetch item with itemID provided by message")
+		entry.WithError(err).Error("failed to fetch item with itemID provided by message")
 		return
 	}
+	seg.End()
 
+	seg = txn.StartSegment("fetching updated item from plaid")
 	item, err := s.gateway.Item(ctx, existingItem.AccessToken)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to fetch plaid item with accessToken")
+		entry.WithError(err).Error("failed to fetch plaid item with accessToken")
 		return
 	}
+	seg.End()
 
+	seg = txn.StartSegment("updating item")
 	item.UserID = existingItem.UserID
 	_, err = s.item.UpdateItem(ctx, item.ItemID, item)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to update item")
+		entry.WithError(err).Error("failed to update item")
 		return
 	}
+	seg.End()
 
+	seg = txn.StartSegment("evaluating webhook code")
 	var start, end time.Time
-
 	switch message.WebhookCode {
 	case "INITIAL_UPDATE", "DEFAULT_UPDATE":
 		start = time.Now().AddDate(0, 0, -30)
@@ -134,18 +143,27 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	default:
 		// unhandled webhook code received
 	}
+	seg.AddAttribute("startDate", start.Format("2006-01-02"))
+	seg.AddAttribute("endDate", start.Format("2006-01-02"))
+	seg.End()
 
+	seg = txn.StartSegment("fetching transactions from plaid")
 	transactions, err := s.gateway.Transactions(ctx, item.AccessToken, start, end)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to fetch transactions")
+		entry.WithError(err).Error("failed to fetch transactions")
 		return
 	}
+	seg.AddAttribute("transactionCount", len(transactions))
+	seg.End()
 
+	seg = txn.StartSegment("processing transactions")
 	err = s.transaction.ProcessTransactions(ctx, item, transactions)
 	if err != nil {
-		s.logger.WithError(err).Error("failed to process transactions")
+		entry.WithError(err).Error("failed to process transactions")
+		return
 	}
+	seg.End()
 
-	s.logger.Info("transactions processed successfully")
+	entry.Info("transactions processed successfully")
 
 }

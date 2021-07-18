@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/ddouglas/ledger"
 	"github.com/ulule/deepcopier"
@@ -43,7 +42,6 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				return fmt.Errorf("failed to insert transaction %s into DB: %w", plaidTransaction.TransactionID, err)
 			}
 
-			time.Sleep(time.Second)
 			continue
 
 		}
@@ -58,21 +56,16 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			return fmt.Errorf("failed to update transaction %s: %w", transaction.TransactionID, err)
 		}
 
-		// if !transaction.Location.IsEmpty() {
-		// 	_, err = s.
-		// }
-		time.Sleep(time.Second)
-
 	}
 
 	return nil
 
 }
 
-func mapTransactionsByTransactionID(trans []*ledger.Transaction) map[string]*ledger.Transaction {
-	mapTransactions := make(map[string]*ledger.Transaction)
-	for _, tran := range trans {
-		mapTransactions[tran.TransactionID] = tran
-	}
-	return mapTransactions
-}
+// func mapTransactionsByTransactionID(trans []*ledger.Transaction) map[string]*ledger.Transaction {
+// 	mapTransactions := make(map[string]*ledger.Transaction)
+// 	for _, tran := range trans {
+// 		mapTransactions[tran.TransactionID] = tran
+// 	}
+// 	return mapTransactions
+// }

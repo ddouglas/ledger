@@ -325,7 +325,7 @@ func actionImporter(c *cli.Context) error {
 		importer.WithTransactions(transaction),
 	)
 
-	importer.Run(context.TODO())
+	importer.Run()
 
 	return nil
 
