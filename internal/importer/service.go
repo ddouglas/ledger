@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ddouglas/ledger/internal/gateway"
-	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
 )
@@ -28,13 +28,13 @@ func New(optFucs ...configOption) Service {
 
 func (s *service) Run(ctx context.Context) {
 
-	pubsub := s.redis.Subscribe(ctx, gateway.PubSubPlaidWebhook)
+	// pubsub := s.redis.Subscribe(ctx, gateway.PubSubPlaidWebhook)
 
-	ch := pubsub.Channel(
-		redis.WithChannelHealthCheckInterval(time.Second*15),
-		redis.WithChannelSendTimeout(time.Second*30),
-		redis.WithChannelSize(10),
-	)
+	// ch := pubsub.Channel(
+	// 	redis.WithChannelHealthCheckInterval(time.Second*15),
+	// 	redis.WithChannelSendTimeout(time.Second*30),
+	// 	redis.WithChannelSize(10),
+	// )
 
 	entry := s.logger.WithFields(logrus.Fields{
 		"service": "Importer",
@@ -42,10 +42,22 @@ func (s *service) Run(ctx context.Context) {
 	})
 	entry.Info("Subscibed to Redis Pubsub")
 
-	for m := range ch {
-		data := []byte(m.Payload)
+	for {
+
+		data, err := s.redis.LPop(ctx, gateway.PubSubPlaidWebhook).Result()
+		if err != nil && err.Error() != redis.Nil {
+			s.logger.WithError(err).Error("failed to fetch messages from queue")
+			return
+		}
+
+		if err != nil && err.Error() == redis.Nil {
+			s.logger.Info("received nil, going to sleep")
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
 		var message = new(WebhookMessage)
-		err := json.Unmarshal(data, message)
+		err := json.Unmarshal([]byte(data), message)
 		if err != nil {
 			entry.WithError(err).Error("failed to decode message")
 			continue

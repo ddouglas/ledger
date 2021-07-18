@@ -28,7 +28,7 @@ func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMes
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
 
-	_, err = s.redis.Publish(ctx, gateway.PubSubPlaidWebhook, data).Result()
+	_, err = s.redis.RPush(ctx, gateway.PubSubPlaidWebhook, data).Result()
 	if err != nil {
 		return err
 	}
