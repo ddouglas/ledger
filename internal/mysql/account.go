@@ -50,7 +50,6 @@ func (r *accountRepository) Account(ctx context.Context, itemID string, accountI
 
 	row := r.db.QueryRowxContext(ctx, query, args...)
 	if row.Err() != nil {
-
 		return nil, errors.Wrapf(row.Err(), "[Account] ItemID: %s AccountID: %s", itemID, accountID)
 	}
 
@@ -218,7 +217,7 @@ func scanAccountFromRow(row *sqlx.Row) (*ledger.Account, error) {
 		&accountType, &created_at, &updated_at,
 	)
 	if err != nil {
-		return nil, errors.Wrap(err, "[scanAccountFromRows]")
+		return nil, errors.Wrap(err, "[scanAccountFromRow]")
 	}
 
 	account := &ledger.Account{

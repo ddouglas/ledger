@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ddouglas/ledger"
-	"github.com/jinzhu/copier"
 	"github.com/plaid/plaid-go/plaid"
 	"github.com/volatiletech/null"
 )
@@ -163,9 +162,11 @@ func (s *service) Accounts(ctx context.Context, accessToken string) ([]*ledger.A
 	}
 
 	var accounts = make([]*ledger.Account, 0, len(response.Accounts))
-	err = copier.Copy(&accounts, &response.Accounts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to copy plaid accounts to ledger accounts: %w", err)
+	for _, plaidAccount := range response.Accounts {
+		account := new(ledger.Account)
+		account.fromPlaidAccount(plaidAccount)
+		accounts = append(accounts, account)
+
 	}
 
 	return accounts, nil
