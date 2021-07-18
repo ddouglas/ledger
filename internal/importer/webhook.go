@@ -36,7 +36,7 @@ func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMes
 	// validate that the item this webhook is for exists
 	_, err := s.item.Item(ctx, webhook.ItemID)
 	if err != nil {
-		s.logger.WithError(err).Error()
+		s.logger.WithField("item_id", webhook.ItemID).WithError(err).Error()
 		return errors.New("unable to locate item with provided item id")
 	}
 
