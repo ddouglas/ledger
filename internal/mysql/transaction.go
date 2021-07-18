@@ -68,18 +68,20 @@ func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, ite
 			"item_id":    itemID,
 			"account_id": accountID,
 		}).
-		OrderBy("date desc")
+		OrderBy("date desc", "pending desc")
 	if pagination != nil {
-		stmt = stmt.Where(sq.LtOrEq{"date": pagination.FromDate}).Limit(pagination.Count)
+		if !pagination.FromDate.IsZero() {
+			stmt = stmt.Where(sq.LtOrEq{"date": pagination.FromDate})
+		}
+		if pagination.Count > 0 {
+			stmt = stmt.Limit(pagination.Count)
+		}
 	}
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[mysql.TransactionsByAccountID]")
 	}
-
-	fmt.Println(query)
-	fmt.Println(args...)
 
 	var transactions = make([]*ledger.Transaction, 0)
 	err = r.db.SelectContext(ctx, &transactions, query, args...)
