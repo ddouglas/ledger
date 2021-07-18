@@ -30,14 +30,6 @@ func New(optFucs ...configOption) Service {
 
 func (s *service) Run() {
 
-	// pubsub := s.redis.Subscribe(ctx, gateway.PubSubPlaidWebhook)
-
-	// ch := pubsub.Channel(
-	// 	redis.WithChannelHealthCheckInterval(time.Second*15),
-	// 	redis.WithChannelSendTimeout(time.Second*30),
-	// 	redis.WithChannelSize(10),
-	// )
-
 	entry := s.logger.WithFields(logrus.Fields{
 		"service": "Importer",
 		"channel": gateway.PubSubPlaidWebhook,

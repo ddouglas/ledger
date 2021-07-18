@@ -25,7 +25,7 @@ func (s *server) handlePlaidPostV1Webhook(w http.ResponseWriter, r *http.Request
 	// publish message to pubsub via importer service
 	err = s.importer.PublishWebhookMessage(ctx, message)
 	if err != nil {
-		s.writeError(ctx, w, http.StatusInternalServerError, fmt.Errorf("failed to publish message: %w", err))
+		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to publish message: %w", err))
 		return
 	}
 
