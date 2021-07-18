@@ -45,13 +45,13 @@ func (r *accountRepository) Account(ctx context.Context, itemID string, accountI
 
 	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"item_id": itemID, "account_id": accountID}).ToSql()
 	if err != nil {
-		return nil, errors.Wrap(err, "[Account]")
+		return nil, errors.Wrapf(err, "[Account] ItemID: %s AccountID: %s", itemID, accountID)
 	}
 
 	var account = new(ledger.Account)
 	err = r.db.GetContext(ctx, account, query, args...)
 
-	return account, errors.Wrap(err, "[Account]")
+	return account, errors.Wrapf(err, "[Account] ItemID: %s AccountID: %s", itemID, accountID)
 
 }
 
@@ -59,16 +59,19 @@ func (r *accountRepository) Accounts(ctx context.Context, itemID string) ([]*led
 
 	query, args, err := sq.Select(accountColumns...).From(accountTable).Where(sq.Eq{"item_id": itemID}).ToSql()
 	if err != nil {
-		return nil, errors.Wrap(err, "[Accounts]")
+		return nil, errors.Wrapf(err, "[Accounts] ItemID: %s", itemID)
 	}
 
 	rows, err := r.db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "[Accounts]")
+		return nil, errors.Wrapf(err, "[Accounts] ItemID: %s", itemID)
 	}
 
 	defer rows.Close()
 	accounts, err := scanAccountFromRows(rows)
+	if err != nil {
+		return nil, errors.Wrapf(err, "[Accounts] ItemID: %s", itemID)
+	}
 
 	return accounts, nil
 
@@ -87,18 +90,18 @@ func (r *accountRepository) AccountsByUserID(ctx context.Context, userID uuid.UU
 		Join("user_items ui on ui.item_id = a.item_id").
 		ToSql()
 	if err != nil {
-		return nil, errors.Wrap(err, "[AccountsByUserID]")
+		return nil, errors.Wrapf(err, "[AccountsByUserID] UserID: %s", userID)
 	}
 
 	rows, err := r.db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "[AccountsByUserID]")
+		return nil, errors.Wrapf(err, "[AccountsByUserID] UserID: %s", userID)
 	}
 
 	defer rows.Close()
 	accounts, err := scanAccountFromRows(rows)
 
-	return accounts, errors.Wrap(err, "[AccountsByUserID]")
+	return accounts, errors.Wrapf(err, "[AccountsByUserID] UserID: %s", userID)
 
 }
 
@@ -109,18 +112,18 @@ func (r *accountRepository) AccountsByItemID(ctx context.Context, itemID string)
 		Where(sq.Eq{"item_id": itemID}).
 		ToSql()
 	if err != nil {
-		return nil, errors.Wrap(err, "[AccountsByUserID]")
+		return nil, errors.Wrapf(err, "[AccountsByItemID] UserID: %s", itemID)
 	}
 
 	rows, err := r.db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "[AccountsByItemID]")
+		return nil, errors.Wrapf(err, "[AccountsByItemID] UserID: %s", itemID)
 	}
 
 	defer rows.Close()
 	accounts, err := scanAccountFromRows(rows)
 
-	return accounts, errors.Wrapf(err, "[AccountsByUserID] UserID: %s", userID)
+	return accounts, errors.Wrapf(err, "[AccountsByItemID] UserID: %s", itemID)
 
 }
 
@@ -147,14 +150,14 @@ func scanAccountFromRows(rows *sqlx.Rows) ([]*ledger.Account, error) {
 			updated_at               time.Time
 		)
 
-		err = rows.Scan(
+		err := rows.Scan(
 			&item_id, &account_id, &mask, &name,
 			&official_name, &balance_available, &balance_current, &balance_limit,
 			&balance_last_updated, &iso_currency_code, &unofficial_currency_code, &subtype,
 			&accountType, &created_at, &updated_at,
 		)
 		if err != nil {
-			return nil, errors.Wrap(err, "[AccountsByUserID]")
+			return nil, errors.Wrap(err, "[scanAccountFromRows]")
 		}
 
 		accounts = append(accounts, &ledger.Account{
@@ -179,6 +182,8 @@ func scanAccountFromRows(rows *sqlx.Rows) ([]*ledger.Account, error) {
 
 	}
 
+	return accounts, nil
+
 }
 
 func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.Account) (*ledger.Account, error) {
@@ -189,12 +194,12 @@ func (r *accountRepository) CreateAccount(ctx context.Context, account *ledger.A
 
 	query, args, err := sq.Insert(accountTable).SetMap(mapColValues).ToSql()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate query")
+		return nil, errors.Wrap(err, "[CreateAccount]")
 	}
 
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "[CreateAccount] AccountID: %s ItemID: ", account.AccountID, account.ItemID)
+		return nil, errors.Wrap(err, "[CreateAccount]")
 	}
 
 	return r.Account(ctx, account.ItemID, account.AccountID)
@@ -208,12 +213,12 @@ func (r *accountRepository) UpdateAccount(ctx context.Context, itemID, accountID
 
 	query, args, err := sq.Update(accountTable).SetMap(mapColValues).ToSql()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate query")
+		return nil, errors.Wrap(err, "[UpdateAccount]")
 	}
 
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "[UpdateAccount] AccountID: %s ItemID: ", account.AccountID, account.ItemID)
+		return nil, errors.Wrap(err, "[UpdateAccount]")
 	}
 
 	return r.Account(ctx, account.ItemID, account.AccountID)
@@ -224,15 +229,15 @@ func (r *accountRepository) DeleteAccount(ctx context.Context, itemID, accountID
 
 	query, args, err := sq.Delete(accountTable).Where(sq.Eq{"item_id": itemID, "account_id": accountID}).ToSql()
 	if err != nil {
-		return errors.Wrap(err, "failed to generate query")
+		return errors.Wrap(err, "[DeleteAccount]")
 	}
 
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return errors.Wrapf(err, "failed to insert account: %s", account.AccountID)
+		return errors.Wrap(err, "[DeleteAccount]")
 	}
 
-	return r.Account(ctx, account.ItemID, account.AccountID)
+	return nil
 }
 
 func mapAccount(account *ledger.Account) map[string]interface{} {
