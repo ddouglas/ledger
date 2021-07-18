@@ -60,7 +60,7 @@ func (r *transactionRepository) Transaction(ctx context.Context, itemID, transac
 
 }
 
-func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, itemID, accountID string, pagination *ledger.TransactionPagination) ([]*ledger.Transaction, error) {
+func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilters) ([]*ledger.Transaction, error) {
 
 	stmt := sq.Select(transactionColumns...).
 		From(tableName).
@@ -69,12 +69,12 @@ func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, ite
 			"account_id": accountID,
 		}).
 		OrderBy("date desc", "pending desc")
-	if pagination != nil {
-		if !pagination.FromDate.IsZero() {
-			stmt = stmt.Where(sq.LtOrEq{"date": pagination.FromDate})
+	if filters != nil {
+		if !filters.FromDate.IsZero() {
+			stmt = stmt.Where(sq.LtOrEq{"date": filters.FromDate})
 		}
-		if pagination.Count > 0 {
-			stmt = stmt.Limit(pagination.Count)
+		if filters.Count > 0 {
+			stmt = stmt.Limit(filters.Count)
 		}
 	}
 
