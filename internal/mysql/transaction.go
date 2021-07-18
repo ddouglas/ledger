@@ -60,16 +60,21 @@ func (r *transactionRepository) Transaction(ctx context.Context, itemID, transac
 
 }
 
-func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, itemID, accountID string) ([]*ledger.Transaction, error) {
+func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, itemID, accountID string, pagination *ledger.TransactionPagination) ([]*ledger.Transaction, error) {
 
-	query, args, err := sq.Select(transactionColumns...).
+	stmt := sq.Select(transactionColumns...).
 		From(tableName).
 		Where(sq.Eq{
 			"item_id":    itemID,
 			"account_id": accountID,
 		}).
-		OrderBy("date desc").
-		ToSql()
+		OrderBy("date desc")
+	if pagination != nil {
+		stmt.Where(sq.LtOrEq{"date": pagination.FromDate})
+		stmt.Limit(uint64(pagination.Count))
+	}
+
+	query, args, err := stmt.ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[mysql.TransactionsByAccountID]")
 	}
