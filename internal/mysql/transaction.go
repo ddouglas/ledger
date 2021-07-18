@@ -71,10 +71,10 @@ func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, ite
 		OrderBy("date desc", "pending desc")
 	if filters != nil {
 		if filters.FromIterator != nil {
-			stmt = stmt.Where(filters.FromIterator.Operation.ToSqlizer(), nil)
+			stmt = stmt.Where(filters.FromIterator.ToSql("iterator"))
 		}
-		if filters.Count > 0 {
-			stmt = stmt.Limit(filters.Count)
+		if filters.Count.Valid {
+			stmt = stmt.Limit(filters.Count.Uint64)
 		}
 	}
 
