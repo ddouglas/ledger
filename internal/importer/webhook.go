@@ -57,7 +57,14 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 		return errors.New("startDate must be earlier than endDate")
 	}
 
-	if webhook.EndDate.Unix()-webhook.StartDate.Unix() < (int64(time.Hour) * 24) {
+	oneHourSec := int64(86400)
+	if webhook.EndDate.Unix()-webhook.StartDate.Unix() < (oneHourSec * 24) {
+		fmt.Printf(
+			"StartDate: %d\tEndDate: %d\tDiff: %d\t24hr: %d\n",
+			webhook.EndDate.Unix(), webhook.StartDate.Unix(),
+			webhook.EndDate.Unix()-webhook.StartDate.Unix(),
+			(int64(time.Hour) * 24),
+		)
 		return errors.New("startDate and endDate must be at least 24 hours apart")
 	}
 

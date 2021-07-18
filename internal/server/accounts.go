@@ -81,6 +81,7 @@ func (s *server) handleUpdateTransactions(w http.ResponseWriter, r *http.Request
 
 	err = s.importer.PublishCustomWebhookMessage(ctx, message)
 	if err != nil {
+		s.logger.WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to process refresh request"))
 		return
 	}
