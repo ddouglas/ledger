@@ -94,6 +94,16 @@ func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID
 
 }
 
+func (s *service) CreateTransaction(ctx context.Context, transaction *ledger.Transaction) (*ledger.Transaction, error) {
+
+	// Plaid returns positives as negatives and vise versa. Here we invest it
+	// Withdraws from an account are now negative and Deposits are positive.
+	transaction.Amount = transaction.Amount * -1
+
+	return s.TransactionRepository.CreateTransaction(ctx, transaction)
+
+}
+
 // func mapTransactionsByTransactionID(trans []*ledger.Transaction) map[string]*ledger.Transaction {
 // 	mapTransactions := make(map[string]*ledger.Transaction)
 // 	for _, tran := range trans {
