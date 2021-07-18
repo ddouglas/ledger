@@ -13,7 +13,7 @@ import (
 )
 
 type Service interface {
-	Run(ctx context.Context)
+	Run()
 	VerifyWebhookMessage(ctx context.Context, header http.Header, message []byte) error
 	PublishWebhookMessage(ctx context.Context, webhook *WebhookMessage) error
 }
@@ -26,7 +26,7 @@ func New(optFucs ...configOption) Service {
 	return s
 }
 
-func (s *service) Run(ctx context.Context) {
+func (s *service) Run() {
 
 	// pubsub := s.redis.Subscribe(ctx, gateway.PubSubPlaidWebhook)
 
@@ -41,32 +41,44 @@ func (s *service) Run(ctx context.Context) {
 		"channel": gateway.PubSubPlaidWebhook,
 	})
 	entry.Info("Subscibed to Redis Pubsub")
-
 	for {
+		txn := s.newrelic.StartTransaction("check-plaid-message-queue")
+		ctx := newrelic.NewContext(context.Background(), txn)
+		entry := s.logger.WithContext(ctx)
+		entry.Info("checking message queue")
 
 		data, err := s.redis.LPop(ctx, gateway.PubSubPlaidWebhook).Result()
 		if err != nil && err.Error() != redis.Nil {
-			s.logger.WithError(err).Error("failed to fetch messages from queue")
-			return
-		}
-
-		if err != nil && err.Error() == redis.Nil {
-			s.logger.Info("received nil, going to sleep")
-			time.Sleep(time.Second * 10)
+			entry.WithError(err).Error("failed to fetch messages from queue")
+			sleep()
 			continue
 		}
 
+		if err != nil && err.Error() == redis.Nil {
+			entry.Info("received nil, going to sleep")
+			txn.Ignore()
+			sleep()
+			continue
+		}
+
+		s.logger.WithField("message", data).Info("webhook received, dispatching processor")
 		var message = new(WebhookMessage)
-		err := json.Unmarshal([]byte(data), message)
+		err = json.Unmarshal([]byte(data), message)
 		if err != nil {
 			entry.WithError(err).Error("failed to decode message")
 			continue
 		}
 
 		s.processMessage(ctx, message)
+		s.logger.Info("processor")
+		sleep()
 
 	}
 
+}
+
+func sleep() {
+	time.Sleep(time.Second * 10)
 }
 
 func (s *service) processMessage(ctx context.Context, message *WebhookMessage) {
