@@ -71,7 +71,7 @@ func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, ite
 		OrderBy("date desc")
 	if pagination != nil {
 		stmt.Where(sq.LtOrEq{"date": pagination.FromDate})
-		stmt.Limit(uint64(pagination.Count))
+		stmt.Limit(pagination.Count)
 	}
 
 	query, args, err := stmt.ToSql()

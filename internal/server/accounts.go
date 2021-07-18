@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
+	"time"
 
+	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
 	"github.com/ddouglas/ledger/internal/importer"
 	"github.com/go-chi/chi/v5"
@@ -40,7 +43,31 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	transactions, err := s.transaction.TransactionsByAccountID(ctx, itemID, accountID)
+	var pagination *ledger.TransactionPagination
+	fromDate := r.URL.Query().Get("fromDate")
+	count := r.URL.Query().Get("count")
+	if fromDate != "" && count != "" {
+		parsedFromDate, err := time.Parse("2006-01-02", fromDate)
+		if err != nil {
+			s.logger.WithError(err).Error()
+			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse date in fromDate query param to valid date"))
+			return
+		}
+
+		parsedCount, err := strconv.ParseUint(count, 10, 64)
+		if err != nil {
+			s.logger.WithError(err).Error()
+			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in fromDate query param to valid uint64"))
+			return
+		}
+
+		pagination = &ledger.TransactionPagination{
+			FromDate: parsedFromDate,
+			Count:    parsedCount,
+		}
+	}
+
+	transactions, err := s.transaction.TransactionsByAccountID(ctx, itemID, accountID, pagination)
 	if err != nil {
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))
 		return
