@@ -31,6 +31,7 @@ func (r *institutionRepository) Institution(ctx context.Context, id string) (*le
 
 	var institution = new(ledger.Institution)
 	err = r.db.GetContext(ctx, institution, query, args...)
+
 	return institution, errors.Wrap(err, "[Institution]")
 
 }
@@ -44,6 +45,7 @@ func (r *institutionRepository) Institutions(ctx context.Context) ([]*ledger.Ins
 
 	var institutions = make([]*ledger.Institution, 0)
 	err = r.db.SelectContext(ctx, &institutions, query, args...)
+
 	return institutions, errors.Wrap(err, "[Institutions]")
 
 }

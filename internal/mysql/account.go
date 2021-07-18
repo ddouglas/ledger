@@ -116,18 +116,18 @@ func (r *accountRepository) AccountsByItemID(ctx context.Context, itemID string)
 		Where(sq.Eq{"item_id": itemID}).
 		ToSql()
 	if err != nil {
-		return nil, errors.Wrapf(err, "[AccountsByItemID] UserID: %s", itemID)
+		return nil, errors.Wrapf(err, "[AccountsByItemID] itemID: %s", itemID)
 	}
 
 	rows, err := r.db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "[AccountsByItemID] UserID: %s", itemID)
+		return nil, errors.Wrapf(err, "[AccountsByItemID] itemID: %s", itemID)
 	}
 
 	defer rows.Close()
 	accounts, err := scanAccountFromRows(rows)
 
-	return accounts, errors.Wrapf(err, "[AccountsByItemID] UserID: %s", itemID)
+	return accounts, errors.Wrapf(err, "[AccountsByItemID] itemID: %s", itemID)
 
 }
 
@@ -287,12 +287,12 @@ func (r *accountRepository) DeleteAccount(ctx context.Context, itemID, accountID
 
 	query, args, err := sq.Delete(accountTable).Where(sq.Eq{"item_id": itemID, "account_id": accountID}).ToSql()
 	if err != nil {
-		return errors.Wrap(err, "[DeleteAccount]")
+		return errors.Wrapf(err, "[DeleteAccount] ItemID: %s AccountID: %s", itemID, accountID)
 	}
 
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return errors.Wrap(err, "[DeleteAccount]")
+		return errors.Wrapf(err, "[DeleteAccount] ItemID: %s AccountID: %s", itemID, accountID)
 	}
 
 	return nil

@@ -94,7 +94,7 @@ func (r *transactionRepository) TransactionsByTransactionIDs(ctx context.Context
 
 	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{"item_id": itemID, "transaction_id": transactionIDs}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate sql stmt: %w", err)
+		return nil, errors.Wrap(err, "[mysql.TransactionsByTransactionIDs]")
 	}
 
 	var transactions = make([]*ledger.Transaction, 0)
