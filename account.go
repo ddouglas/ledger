@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/plaid/plaid-go/plaid"
 	"github.com/volatiletech/null"
 )
 
@@ -29,6 +30,25 @@ type Account struct {
 	Type         null.String     `db:"type" json:"type"`
 	CreatedAt    time.Time       `db:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time       `db:"updated_at" json:"updated_at"`
+}
+
+func (a *Account) FromPlaidAccount(itemID string, account plaid.Account) {
+
+	a.ItemID = itemID
+	a.AccountID = account.AccountID
+	a.Mask = null.NewString(account.Mask, account.Mask != "")
+	a.Name = null.NewString(account.Name, account.Name != "")
+	a.OfficialName = null.NewString(account.OfficialName, account.OfficialName != "")
+	a.Subtype = null.NewString(account.Subtype, account.Subtype != "")
+	a.Type = null.NewString(account.Type, account.Type != "")
+	a.Balance = &AccountBalance{
+		Available:              account.Balances.Available,
+		Current:                account.Balances.Current,
+		Limit:                  account.Balances.Limit,
+		ISOCurrencyCode:        account.Balances.ISOCurrencyCode,
+		UnofficialCurrencyCode: null.NewString(account.Balances.UnofficialCurrencyCode, account.Balances.UnofficialCurrencyCode != ""),
+	}
+
 }
 
 type AccountBalance struct {
