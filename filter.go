@@ -12,6 +12,15 @@ type StringFilter struct {
 	String    string
 }
 
+type NumberFilter struct {
+	Operation Operation
+	Number    int
+}
+
+type OrderByFilter struct {
+	Direction Direction
+}
+
 type Operation string
 
 const (
@@ -23,4 +32,11 @@ const (
 	LtEqOperation  Operation = "<="
 	// EqOperation Operation = "="
 	// EqOperation Operation = "="
+)
+
+type Direction string
+
+const (
+	AscDirection  Direction = "ASC"
+	DescDirection Direction = "DESC"
 )

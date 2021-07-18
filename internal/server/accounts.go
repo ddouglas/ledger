@@ -44,7 +44,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 	}
 
 	var pagination *ledger.TransactionPagination
-	fromDate := r.URL.Query().Get("fromDate")
+	 := r.URL.Query().Get("fromTransactionID")
 	count := r.URL.Query().Get("count")
 	if fromDate != "" && count != "" {
 		parsedFromDate, err := time.Parse("2006-01-02", fromDate)
@@ -61,8 +61,8 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		pagination = &ledger.TransactionPagination{
-			FromDate: parsedFromDate,
+		pagination = &ledger.TransactionFilter{
+			FromTransactionID: ledger.StringFilter{String: parsedFromDate},
 			Count:    parsedCount,
 		}
 	}

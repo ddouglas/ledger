@@ -48,9 +48,9 @@ type Transaction struct {
 	Location    *TransactionLocation    `json:"location"`
 }
 
-type TransactionPagination struct {
-	FromDate time.Time `json:"fromDate"`
-	Count    uint64    `json:"count"`
+type TransactionFilter struct {
+	FromTransactionID StringFilter `json:"transactionID"`
+	Count             uint64       `json:"count"`
 }
 
 func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {
