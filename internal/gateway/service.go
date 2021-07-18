@@ -15,7 +15,7 @@ type Service interface {
 	ExchangePublicToken(ctx context.Context, publicToken string) (itemID, accessToken string, err error)
 	Item(ctx context.Context, accessToken string) (*ledger.Item, error)
 	LinkToken(ctx context.Context, user *ledger.User) (string, error)
-	Transactions(ctx context.Context, accessToken string, startDate, endDate time.Time) ([]*ledger.Transaction, error)
+	Transactions(ctx context.Context, accessToken string, startDate, endDate time.Time, accountIDs []string) ([]*ledger.Transaction, error)
 	WebhookVerificationKey(ctx context.Context, keyID string) (*plaid.WebhookVerificationKey, error)
 }
 
@@ -113,7 +113,7 @@ func (s *service) ExchangePublicToken(ctx context.Context, publicToken string) (
 
 }
 
-func (s *service) Transactions(ctx context.Context, accessToken string, startDate, endDate time.Time) ([]*ledger.Transaction, error) {
+func (s *service) Transactions(ctx context.Context, accessToken string, startDate, endDate time.Time, accountIDs []string) ([]*ledger.Transaction, error) {
 
 	opts := plaid.GetTransactionsOptions{
 		StartDate: startDate.Format("2006-01-02"),
@@ -121,7 +121,11 @@ func (s *service) Transactions(ctx context.Context, accessToken string, startDat
 		Count:     100,
 	}
 
-	response, err := s.client.GetTransactions(accessToken, opts.StartDate, opts.EndDate)
+	if len(accountIDs) > 0 {
+		opts.AccountIDs = accountIDs
+	}
+
+	response, err := s.client.GetTransactionsWithOptions(accessToken, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch transactions: %w", err)
 	}

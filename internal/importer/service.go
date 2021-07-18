@@ -129,6 +129,7 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 
 	seg = txn.StartSegment("evaluating webhook code")
 	var start, end time.Time
+	var accountIDs []string
 	switch message.WebhookCode {
 	case "INITIAL_UPDATE":
 		start = time.Now().AddDate(0, 0, -30)
@@ -142,6 +143,9 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	case "CUSTOM_UPDATE":
 		start = message.StartDate
 		end = message.EndDate
+		if message.Options != nil && len(message.Options.AccountIDs) > 0 {
+			accountIDs = message.Options.AccountIDs
+		}
 	case "TRANSACTIONS_REMOVED":
 		// How to handle this, thinking about calling a seperate func
 		// and then returning here instead of allowing the func to continue processing
@@ -153,7 +157,7 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	seg.End()
 
 	seg = txn.StartSegment("fetching transactions from plaid")
-	transactions, err := s.gateway.Transactions(ctx, item.AccessToken, start, end)
+	transactions, err := s.gateway.Transactions(ctx, item.AccessToken, start, end, accountIDs)
 	if err != nil {
 		entry.WithError(err).Error("failed to fetch transactions")
 		return
