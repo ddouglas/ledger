@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -38,6 +39,40 @@ func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMes
 	}
 
 	return nil
+}
+
+// PublishCustomWebhookMessage
+func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *WebhookMessage) error {
+
+	if webhook.ItemID == "" {
+		return errors.New("itemID is required")
+	}
+
+	if webhook.StartDate.IsZero() || webhook.EndDate.IsZero() {
+		return errors.New("startDate and endDate are required")
+	}
+
+	if webhook.StartDate.Unix() > webhook.EndDate.Unix() {
+		return errors.New("startDate must be earlier than endDate")
+	}
+
+	if webhook.EndDate.Unix()-webhook.StartDate.Unix() < (int64(time.Hour) * 24) {
+		return errors.New("startDate and endDate must be at least 24 hours apart")
+	}
+
+	if webhook.EndDate.Unix()-webhook.StartDate.Unix() > (int64(time.Hour) * 24 * 30 * 6) {
+		return errors.New("startDate and endDate cannot be more than 6 months apart")
+	}
+
+	twoYearsAgo := time.Now().AddDate(-2, 0, 0)
+	if webhook.StartDate.Unix() < twoYearsAgo.Unix() {
+		return fmt.Errorf("startDate cannot be earlier than %s", twoYearsAgo.Format("2006-01-02"))
+	}
+
+	webhook.WebhookType = "TRANSACTIONS"
+	webhook.WebhookCode = "CUSTOM_UPDATE"
+
+	return s.PublishWebhookMessage(ctx, webhook)
 }
 
 func (s *service) VerifyWebhookMessage(ctx context.Context, header http.Header, message []byte) error {

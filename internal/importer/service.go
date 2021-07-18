@@ -17,6 +17,7 @@ type Service interface {
 	Run()
 	VerifyWebhookMessage(ctx context.Context, header http.Header, message []byte) error
 	PublishWebhookMessage(ctx context.Context, webhook *WebhookMessage) error
+	PublishCustomWebhookMessage(ctx context.Context, webhook *WebhookMessage) error
 }
 
 func New(optFucs ...configOption) Service {
@@ -129,15 +130,18 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	seg = txn.StartSegment("evaluating webhook code")
 	var start, end time.Time
 	switch message.WebhookCode {
-	case "INITIAL_UPDATE", "DEFAULT_UPDATE":
+	case "INITIAL_UPDATE":
 		start = time.Now().AddDate(0, 0, -30)
 		end = time.Now()
 	case "HISTORICAL_UPDATE":
 		start = time.Now().AddDate(-2, 0, 0)
 		end = time.Now().AddDate(0, 0, -30)
-	// case "DEFAULT_UPDATE":
-	// 	start = time.Now().AddDate(0, 0, 0)
-	// 	end = time.Now()
+	case "DEFAULT_UPDATE":
+		start = time.Now().AddDate(0, 0, 0)
+		end = time.Now()
+	case "CUSTOM_UPDATE":
+		start = message.StartDate
+		end = message.EndDate
 	case "TRANSACTIONS_REMOVED":
 		// How to handle this, thinking about calling a seperate func
 		// and then returning here instead of allowing the func to continue processing
