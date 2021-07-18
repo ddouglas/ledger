@@ -71,7 +71,7 @@ func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, ite
 		OrderBy("date desc", "pending desc")
 	if filters != nil {
 		if filters.FromIterator.Number > 0 {
-			stmt = stmt.Where(sq.LtOrEq{"date": filters.FromDate})
+			stmt = stmt.Where(sq.And)
 		}
 		if filters.Count > 0 {
 			stmt = stmt.Limit(filters.Count)

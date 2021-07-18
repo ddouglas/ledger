@@ -1,20 +1,44 @@
 package ledger
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type TimeFilter struct {
-	Operation Operation
-	Time      time.Time
+	operation Operation
+	time      time.Time
 }
 
 type StringFilter struct {
-	Operation Operation
-	String    string
+	operation Operation
+	string    string
+}
+
+func NewStringFilter(op Operation, str string) (StringFilter, error) {
+	if !op.IsValid() {
+		return StringFilter{}, fmt.Errorf("operation %s is not valid", string(op))
+	}
+
+	return StringFilter{
+		op, str,
+	}, nil
+
 }
 
 type NumberFilter struct {
-	Operation Operation
-	Number    int
+	operation Operation
+	number    int64
+}
+
+func NewNumberFilter(op Operation, number int64) (NumberFilter, error) {
+	if !op.IsValid() {
+		return NumberFilter{}, fmt.Errorf("operation %s is not valid", string(op))
+	}
+
+	return NumberFilter{
+		op, number,
+	}, nil
 }
 
 type OrderByFilter struct {
@@ -33,6 +57,21 @@ const (
 	// EqOperation Operation = "="
 	// EqOperation Operation = "="
 )
+
+var AllOps = []Operation{
+	EqOperation, NotEqOperation, GtOperation,
+	GtEqOperation, LtOperation, LtEqOperation,
+}
+
+func (o Operation) IsValid() bool {
+	for _, op := range AllOps {
+		if op == o {
+			return true
+		}
+	}
+
+	return false
+}
 
 type Direction string
 
