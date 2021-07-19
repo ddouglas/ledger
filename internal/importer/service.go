@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ddouglas/ledger/internal/gateway"
-	"github.com/ddouglas/structtime"
 	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
@@ -134,8 +133,8 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 		start = time.Now().AddDate(0, 0, 0)
 		end = time.Now()
 	case "CUSTOM_UPDATE":
-		start = structtime.Time(message.StartDate)
-		end = structtime.Time(message.StartDate)
+		start = message.StartDate
+		end = message.EndDate
 		if message.Options != nil && len(message.Options.AccountIDs) > 0 {
 			accountIDs = message.Options.AccountIDs
 		}

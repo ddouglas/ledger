@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ddouglas/ledger/internal/gateway"
-	"github.com/ddouglas/structtime"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
@@ -24,8 +23,8 @@ type WebhookMessage struct {
 	Error           *plaid.Error `json:"error,omitempty"`
 	NewTransactions int          `json:"new_transactions"`
 	// Custom Fields
-	StartDate structtime.Time        `json:"startDate,omitempty"`
-	EndDate   structtime.Time        `json:"endDate,omitempty"`
+	StartDate time.Time              `json:"startDate,omitempty"`
+	EndDate   time.Time              `json:"endDate,omitempty"`
 	Options   *WebhookMessageOptions `json:"options,omitempty"`
 }
 
