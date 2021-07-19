@@ -64,14 +64,15 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 		return errors.New("startDate must be earlier than endDate")
 	}
 
+	// Verify ItemID this is for exists
+	item, err := s.item.Item(ctx, webhook.ItemID)
+	if err != nil {
+		s.logger.WithField("item_id", webhook.ItemID).WithError(err).Error()
+		return fmt.Errorf("failed to verify item %s exists", webhook.ItemID)
+	}
+
 	oneHourSec := int64(86400)
 	if webhook.EndDate.Unix()-webhook.StartDate.Unix() < (oneHourSec * 24) {
-		fmt.Printf(
-			"StartDate: %d\tEndDate: %d\tDiff: %d\t24hr: %d\n",
-			webhook.EndDate.Unix(), webhook.StartDate.Unix(),
-			webhook.EndDate.Unix()-webhook.StartDate.Unix(),
-			(int64(time.Hour) * 24),
-		)
 		return errors.New("startDate and endDate must be at least 24 hours apart")
 	}
 
@@ -87,7 +88,12 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 	webhook.WebhookType = "TRANSACTIONS"
 	webhook.WebhookCode = "CUSTOM_UPDATE"
 
-	return s.PublishWebhookMessage(ctx, webhook)
+	err = s.PublishWebhookMessage(ctx, webhook)
+	if err != nil {
+		return fmt.Errorf("failed to publish webhook message to importer")
+	}
+
+	return
 }
 
 func (s *service) VerifyWebhookMessage(ctx context.Context, header http.Header, message []byte) error {

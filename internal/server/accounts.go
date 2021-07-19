@@ -71,6 +71,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 }
 
+// handleUpdateTransactions handles triggering importer to refresh transactions within a specific date range for a specific account
 func (s *server) handleUpdateTransactions(w http.ResponseWriter, r *http.Request) {
 
 	var ctx = r.Context()
