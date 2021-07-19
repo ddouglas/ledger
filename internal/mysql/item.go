@@ -28,7 +28,7 @@ var userItemColumns = []string{
 	"consent_expiration_time",
 	"update_type",
 	"item_status",
-	"refreshing",
+	"is_refreshing",
 	"created_at",
 	"updated_at",
 }
@@ -100,7 +100,7 @@ func (r *userItemRepository) CreateItem(ctx context.Context, item *ledger.Item) 
 		item.ConsentExpirationTime,
 		item.UpdateType,
 		item.ItemStatus,
-		item.ItemRefreshing,
+		item.IsRefreshing,
 		sq.Expr(`NOW()`),
 		sq.Expr(`NOW()`),
 	).Options("IGNORE").ToSql()
@@ -131,7 +131,7 @@ func (r *userItemRepository) UpdateItem(ctx context.Context, itemID string, item
 		Set("consent_expiration_time", item.ConsentExpirationTime).
 		Set("update_type", item.UpdateType).
 		Set("item_status", item.ItemStatus).
-		Set("refreshing", item.ItemRefreshing).
+		Set("is_refreshing", item.IsRefreshing).
 		Set("updated_at", sq.Expr(`NOW()`)).
 		Where(sq.Eq{"item_id": item.ItemID, "user_id": item.UserID}).ToSql()
 	if err != nil {

@@ -33,7 +33,7 @@ type Item struct {
 	ConsentExpirationTime null.Time   `db:"consent_expiration_time" json:"consentExpirationTime"`
 	UpdateType            null.String `db:"update_type" json:"updateType"`
 	ItemStatus            ItemStatus  `db:"item_status" json:"itemStatus"`
-	ItemRefreshing        bool        `db:"refreshing" json:"refreshing"`
+	IsRefreshing          bool        `db:"is_refreshing" json:"isRefreshing"`
 	CreatedAt             time.Time   `db:"created_at" json:"-"`
 	UpdatedAt             time.Time   `db:"updated_at" json:"-"`
 

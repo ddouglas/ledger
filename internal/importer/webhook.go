@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
 	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/pkg/errors"
 	"github.com/plaid/plaid-go/plaid"
 )
 
@@ -93,7 +93,11 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 		return fmt.Errorf("failed to publish webhook message to importer")
 	}
 
-	return
+	item.IsRefreshing = true
+
+	_, err = s.item.UpdateItem(ctx, item.ItemID, item)
+
+	return errors.Wrap(err, "failed to update item")
 }
 
 func (s *service) VerifyWebhookMessage(ctx context.Context, header http.Header, message []byte) error {
