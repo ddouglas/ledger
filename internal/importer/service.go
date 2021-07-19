@@ -133,8 +133,8 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 		start = time.Now().AddDate(0, 0, 0)
 		end = time.Now()
 	case "CUSTOM_UPDATE":
-		start = message.StartDate
-		end = message.EndDate
+		start = time.Time(message.StartDate)
+		end = time.Time(message.EndDate)
 		if message.Options != nil && len(message.Options.AccountIDs) > 0 {
 			accountIDs = message.Options.AccountIDs
 		}
