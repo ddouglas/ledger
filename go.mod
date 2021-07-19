@@ -27,5 +27,3 @@ require (
 	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
-
-replace github.com/ddouglas/structtime => /root/projects/structtime
