@@ -57,6 +57,7 @@ func (s *server) buildRouter() *chi.Mux {
 			r.Post("/items", s.handlePostUserItems)
 			r.Get("/items/{itemID}/accounts", s.handleGetItemAccounts)
 			r.Get("/items/{itemID}/accounts/{accountID}", s.handleGetItemAccount)
+			r.Get("/items/{itemID}", s.handleGetUserItem)
 			r.Delete("/items/{itemID}", s.handleDeleteUserItem)
 
 			r.Get("/items/{itemID}/accounts/{accountID}/transactions", s.handleGetAccountTransactions)

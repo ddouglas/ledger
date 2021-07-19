@@ -27,6 +27,28 @@ func (s *server) handleGetUserItems(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (s *server) handleGetUserItem(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+
+	user := internal.UserFromContext(ctx)
+
+	itemID := chi.URLParam(r, "itemID")
+	if itemID == "" {
+		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("itemID is required"))
+		return
+	}
+
+	items, err := s.item.ItemsByUserID(ctx, user.ID)
+	if err != nil {
+		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch items by user: %w", err))
+		return
+	}
+
+	s.writeResponse(ctx, w, http.StatusOK, items)
+
+}
+
 func (s *server) handleGetItemAccounts(w http.ResponseWriter, r *http.Request) {
 
 	var ctx = r.Context()
