@@ -29,6 +29,7 @@ CREATE TABLE `user_items` (
     `consent_expiration_time` DATETIME NULL DEFAULT NULL,
     `update_type` ENUM('background', 'user_present_required') NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
     `item_status` JSON NULL DEFAULT NULL,
+    `is_refreshing` TINYINT(4) NOT NULL DEFAULT '0',
     `created_at` DATETIME NOT NULL,
     `updated_at` DATETIME NOT NULL,
     PRIMARY KEY (`user_id`, `item_id`) USING BTREE,
@@ -37,26 +38,31 @@ CREATE TABLE `user_items` (
 ) COLLATE = 'utf8mb4_general_ci' ENGINE = InnoDB;
 
 CREATE TABLE `accounts` (
-    `user_id` CHAR(64) NOT NULL COLLATE 'utf8mb4_general_ci',
     `item_id` VARCHAR(64) NOT NULL COLLATE 'utf8mb4_general_ci',
     `account_id` VARCHAR(64) NOT NULL COLLATE 'utf8mb4_general_ci',
-    `balance_available` INT(11) NULL DEFAULT NULL,
-    `balance_current` INT(11) NULL DEFAULT NULL,
+    `mask` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+    `name` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+    `official_name` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+    `balance_available` INT(11) NOT NULL DEFAULT '0',
+    `balance_current` INT(11) NOT NULL DEFAULT '0',
+    `balance_limit` INT(11) NOT NULL DEFAULT '0',
     `balance_country_code` VARCHAR(16) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
-    `balance_limit` INT(11) NULL DEFAULT NULL,
-    `iso_current_code` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
-    `unofficial_currency_codes` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+    `balance_last_updated` DATETIME NULL DEFAULT NULL,
+    `iso_currency_code` VARCHAR(128) NOT NULL DEFAULT '' COLLATE 'utf8mb4_general_ci',
+    `unofficial_currency_code` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+    `subtype` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
+    `type` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
     `created_at` DATETIME NOT NULL,
     `updated_at` DATETIME NOT NULL,
-    PRIMARY KEY (`user_id`, `item_id`, `account_id`) USING BTREE,
-    CONSTRAINT `accounts_user_id_users_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `ledger`.`users` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+    PRIMARY KEY (`item_id`, `account_id`) USING BTREE,
+    INDEX `account_id` (`account_id`) USING BTREE,
+    CONSTRAINT `FK_accounts_user_items` FOREIGN KEY (`item_id`) REFERENCES `ledger`.`user_items` (`item_id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) COLLATE = 'utf8mb4_general_ci' ENGINE = InnoDB;
 
 CREATE TABLE `transactions` (
     `item_id` VARCHAR(64) NOT NULL COLLATE 'utf8mb4_general_ci',
     `account_id` VARCHAR(64) NOT NULL COLLATE 'utf8mb4_general_ci',
     `transaction_id` VARCHAR(64) NOT NULL COLLATE 'utf8mb4_general_ci',
-    `interator` INT(11) NOT NULL AUTO_INCREMENT,
     `pending_transaction_id` VARCHAR(64) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
     `category_id` VARCHAR(64) NULL DEFAULT NULL COLLATE 'utf8mb4_general_ci',
     `name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_general_ci',
@@ -77,8 +83,8 @@ CREATE TABLE `transactions` (
     PRIMARY KEY (`item_id`, `account_id`, `transaction_id`) USING BTREE,
     INDEX `transactions_account_id_idx` (`account_id`) USING BTREE,
     INDEX `date` (`date`) USING BTREE,
-    INDEX `interator` (`interator`) USING BTREE,
     INDEX `pending` (`pending`) USING BTREE,
+    INDEX `transaction_id` (`transaction_id`) USING BTREE,
     CONSTRAINT `transactions_account_id_accounts_id` FOREIGN KEY (`account_id`) REFERENCES `ledger`.`accounts` (`account_id`) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT `transactions_item_id_items_id_foreign` FOREIGN KEY (`item_id`) REFERENCES `ledger`.`user_items` (`item_id`) ON UPDATE CASCADE ON DELETE CASCADE
-) COLLATE = 'utf8mb4_general_ci' ENGINE = InnoDB AUTO_INCREMENT = 8776;
+) COLLATE = 'utf8mb4_general_ci' ENGINE = InnoDB;

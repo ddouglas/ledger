@@ -2,3 +2,4 @@
 .build/
 logs/
 cmd/ledger/__debug_bin
+.data
