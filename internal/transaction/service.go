@@ -6,9 +6,10 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/pkg/errors"
-	"github.com/ulule/deepcopier"
+	"github.com/r3labs/diff"
 )
 
 type Service interface {
@@ -56,17 +57,27 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 		entry.Info("existing transaction discover, updating record")
 
-		err = deepcopier.Copy(plaidTransaction).To(transaction)
+		changelog, err := diff.Diff(transaction, plaidTransaction)
 		if err != nil {
 			entry.WithError(err).Error()
-			return fmt.Errorf("failed to copy plaidTransaction to ledgerTransaction")
+			return fmt.Errorf("unable to determine updated attributes of transaction")
 		}
 
-		_, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
-		if err != nil {
-			entry.WithError(err).Error()
-			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
+		if len(changelog) > 0 {
+			spew.Dump(changelog)
 		}
+
+		// err = deepcopier.Copy(plaidTransaction).To(transaction)
+		// if err != nil {
+		// 	entry.WithError(err).Error()
+		// 	return fmt.Errorf("failed to copy plaidTransaction to ledgerTransaction")
+		// }
+
+		// _, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
+		// if err != nil {
+		// 	entry.WithError(err).Error()
+		// 	return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
+		// }
 
 	}
 
