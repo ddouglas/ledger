@@ -145,7 +145,7 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 		// unhandled webhook code received
 	}
 	seg.AddAttribute("startDate", start.Format("2006-01-02"))
-	seg.AddAttribute("endDate", start.Format("2006-01-02"))
+	seg.AddAttribute("endDate", end.Format("2006-01-02"))
 	seg.End()
 
 	seg = txn.StartSegment("fetching transactions from plaid")

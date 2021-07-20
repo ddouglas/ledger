@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
@@ -55,6 +56,8 @@ func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMes
 
 // PublishCustomWebhookMessage
 func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *WebhookMessage) error {
+
+	spew.Dump(webhook)
 
 	if webhook.StartDate.IsZero() || webhook.EndDate.IsZero() {
 		return errors.New("startDate and endDate are required")
