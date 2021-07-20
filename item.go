@@ -22,7 +22,6 @@ type ItemRepository interface {
 }
 
 type Item struct {
-	UserID                uuid.UUID   `db:"user_id" json:"userID"`
 	ItemID                string      `db:"item_id" json:"itemID"`
 	AccessToken           string      `db:"access_token" json:"-"`
 	InstitutionID         null.String `db:"institution_id" json:"institutionID"`
@@ -33,11 +32,13 @@ type Item struct {
 	ConsentExpirationTime null.Time   `db:"consent_expiration_time" json:"consentExpirationTime"`
 	UpdateType            null.String `db:"update_type" json:"updateType"`
 	ItemStatus            ItemStatus  `db:"item_status" json:"itemStatus"`
-	IsRefreshing          bool        `db:"is_refreshing" json:"isRefreshing"`
-	CreatedAt             time.Time   `db:"created_at" json:"-"`
-	UpdatedAt             time.Time   `db:"updated_at" json:"-"`
 
-	Institution *Institution `json:"institution,omitempty"`
+	UserID       uuid.UUID `db:"user_id" json:"userID" deepcopier:"-"`
+	IsRefreshing bool      `db:"is_refreshing" json:"isRefreshing" deepcopier:"-"`
+	CreatedAt    time.Time `db:"created_at" json:"-" deepcopier:"-"`
+	UpdatedAt    time.Time `db:"updated_at" json:"-" deepcopier:"-"`
+
+	Institution *Institution `json:"institution,omitempty" deepcopier:"-"`
 }
 
 type ItemStatus plaid.ItemStatus
