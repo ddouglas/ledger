@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
@@ -79,6 +80,8 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		// 	return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
 		// }
 
+		time.Sleep(time.Second * 5)
+
 	}
 
 	return nil
@@ -102,16 +105,6 @@ func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID
 	}
 
 	return s.TransactionRepository.TransactionsByAccountID(ctx, itemID, accountID, filters)
-
-}
-
-func (s *service) CreateTransaction(ctx context.Context, transaction *ledger.Transaction) (*ledger.Transaction, error) {
-
-	// Plaid returns positives as negatives and vise versa. Here we invest it
-	// Withdraws from an account are now negative and Deposits are positive.
-	transaction.Amount = transaction.Amount * -1
-
-	return s.TransactionRepository.CreateTransaction(ctx, transaction)
 
 }
 

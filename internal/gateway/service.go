@@ -151,6 +151,11 @@ func (s *service) Transactions(ctx context.Context, accessToken string, startDat
 		transaction := new(ledger.Transaction)
 		transaction.FromPlaidTransaction(plaidTransaction)
 		transaction.ItemID = response.Item.ItemID
+
+		// Plaid returns positives as negatives and vise versa. Here we invest it
+		// Withdraws from an account are now negative and Deposits are positive.
+		transaction.Amount = transaction.Amount * -1
+
 		transactions = append(transactions, transaction)
 	}
 

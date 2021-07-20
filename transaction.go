@@ -21,7 +21,7 @@ type TransactionRepository interface {
 }
 
 type Transaction struct {
-	ItemID                 string      `db:"item_id" json:"itemID" deepcopier:"skip"`
+	ItemID                 string      `db:"item_id" json:"itemID" diff:"-"`
 	AccountID              string      `db:"account_id" json:"accountID"`
 	TransactionID          string      `db:"transaction_id" json:"transactionID"`
 	Iterator               uint        `db:"iterator" json:"-"`
@@ -40,10 +40,10 @@ type Transaction struct {
 	AuthorizedDateTime     null.Time   `db:"authorized_datetime" json:"authorizedDateTime"`
 	Date                   time.Time   `db:"date" json:"date"`
 	DateTime               null.Time   `db:"datetime" json:"dateTime"`
-	DeletedAt              null.Time   `db:"deleted_at" json:"deletedAt" deepcopier:"skip"`
-	HiddenAt               null.Time   `db:"hidden_at" json:"hiddenAt" deepcopier:"skip"`
-	CreatedAt              time.Time   `db:"created_at" json:"-" deepcopier:"skip"`
-	UpdatedAt              time.Time   `db:"updated_at" json:"-" deepcopier:"skip"`
+	DeletedAt              null.Time   `db:"deleted_at" json:"deletedAt" diff:"-"`
+	HiddenAt               null.Time   `db:"hidden_at" json:"hiddenAt" diff:"-"`
+	CreatedAt              time.Time   `db:"created_at" json:"-" diff:"-"`
+	UpdatedAt              time.Time   `db:"updated_at" json:"-" diff:"-"`
 
 	PaymentMeta *TransactionPaymentMeta `json:"transactionMeta"`
 	Location    *TransactionLocation    `json:"location"`
