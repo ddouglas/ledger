@@ -39,13 +39,13 @@ func (s *server) handleGetUserItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := s.item.ItemsByUserID(ctx, user.ID)
+	item, err := s.item.ItemByUserID(ctx, user.ID, itemID)
 	if err != nil {
 		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch items by user: %w", err))
 		return
 	}
 
-	s.writeResponse(ctx, w, http.StatusOK, items)
+	s.writeResponse(ctx, w, http.StatusOK, item)
 
 }
 

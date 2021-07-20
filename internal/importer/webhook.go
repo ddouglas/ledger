@@ -57,8 +57,6 @@ func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMes
 // PublishCustomWebhookMessage
 func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *WebhookMessage) error {
 
-	spew.Dump(webhook)
-
 	if webhook.StartDate.IsZero() || webhook.EndDate.IsZero() {
 		return errors.New("startDate and endDate are required")
 	}
@@ -97,6 +95,8 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 	}
 
 	item.IsRefreshing = true
+
+	spew.Dump(item)
 
 	_, err = s.item.UpdateItem(ctx, item.ItemID, item)
 
