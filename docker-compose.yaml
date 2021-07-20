@@ -1,0 +1,12 @@
+version: "3.7"
+
+services:
+    mysql:
+        image: mysql:8
+        restart: always
+        volumes:
+            - ./_data/mysql:/var/lib/mysql
+            - ./.config/mysqlconf/athena.conf:/etc/mysql/athena.conf
+        env_file: ./.config/mysql.env
+        ports:
+            - "3310:3306"
