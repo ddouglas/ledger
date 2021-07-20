@@ -69,14 +69,14 @@ func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, ite
 			"account_id": accountID,
 		}).
 		OrderBy("date desc", "pending desc")
-	if filters != nil {
-		if filters.FromIterator != nil {
-			stmt = stmt.Where(filters.FromIterator.ToSql("iterator"))
-		}
-		if filters.Count.Valid {
-			stmt = stmt.Limit(filters.Count.Uint64)
-		}
-	}
+	// if filters != nil {
+	// 	if filters.FromIterator != nil {
+	// 		stmt = stmt.Where(filters.FromIterator.ToSql("iterator"))
+	// 	}
+	// 	if filters.Count.Valid {
+	// 		stmt = stmt.Limit(filters.Count.Uint64)
+	// 	}
+	// }
 
 	query, args, err := stmt.ToSql()
 	if err != nil {

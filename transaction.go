@@ -24,7 +24,6 @@ type Transaction struct {
 	ItemID                 string      `db:"item_id" json:"itemID" diff:"-"`
 	AccountID              string      `db:"account_id" json:"accountID"`
 	TransactionID          string      `db:"transaction_id" json:"transactionID"`
-	Iterator               uint        `db:"iterator" json:"-"`
 	PendingTransactionID   null.String `db:"pending_transaction_id" json:"pendingTransactionID"`
 	CategoryID             null.String `db:"category_id" json:"categoryID"`
 	Name                   string      `db:"name" json:"name"`
@@ -45,8 +44,8 @@ type Transaction struct {
 	CreatedAt              time.Time   `db:"created_at" json:"-" diff:"-"`
 	UpdatedAt              time.Time   `db:"updated_at" json:"-" diff:"-"`
 
-	PaymentMeta *TransactionPaymentMeta `json:"transactionMeta"`
-	Location    *TransactionLocation    `json:"location"`
+	PaymentMeta *TransactionPaymentMeta `json:"transactionMeta" diff:"-"`
+	Location    *TransactionLocation    `json:"location" diff:"-"`
 }
 
 type TransactionFilter struct {

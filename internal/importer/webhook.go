@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
@@ -95,8 +94,6 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 	}
 
 	item.IsRefreshing = true
-
-	spew.Dump(item)
 
 	_, err = s.item.UpdateItem(ctx, item.ItemID, item)
 

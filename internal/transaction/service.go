@@ -91,17 +91,17 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
 
 	if filters != nil && filters.FromTransactionID != nil {
-		transaction, err := s.Transaction(ctx, itemID, filters.FromTransactionID.String)
-		if err != nil {
-			s.logger.WithError(err).Errorln()
-			return nil, errors.New("unable to filter on unknown transaction")
-		}
+		// transaction, err := s.Transaction(ctx, itemID, filters.FromTransactionID.String)
+		// if err != nil {
+		// 	s.logger.WithError(err).Errorln()
+		// 	return nil, errors.New("unable to filter on unknown transaction")
+		// }
 
-		filters.FromIterator, err = ledger.NewNumberFilter(ledger.LtOperation, int64(transaction.Iterator))
-		if err != nil {
-			return nil, err
-		}
-		filters.FromTransactionID = nil
+		// filters.FromIterator, err = ledger.NewNumberFilter(ledger.LtOperation, int64(transaction.Iterator))
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// filters.FromTransactionID = nil
 	}
 
 	return s.TransactionRepository.TransactionsByAccountID(ctx, itemID, accountID, filters)
