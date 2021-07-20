@@ -133,14 +133,14 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 		start = time.Now().AddDate(0, 0, 0)
 		end = time.Now()
 	case "CUSTOM_UPDATE":
-		start = time.Time(message.StartDate)
-		end = time.Time(message.EndDate)
+		start = message.StartDate
+		end = message.EndDate
 		if message.Options != nil && len(message.Options.AccountIDs) > 0 {
 			accountIDs = message.Options.AccountIDs
 		}
 	case "TRANSACTIONS_REMOVED":
 		// How to handle this, thinking about calling a seperate func
-		// and then returning here instead of allowing the func to continue processing
+		// and then returning here instead of allowing the  func to continue processing
 	default:
 		// unhandled webhook code received
 	}

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
@@ -24,8 +23,8 @@ type WebhookMessage struct {
 	Error           *plaid.Error `json:"error,omitempty"`
 	NewTransactions int          `json:"new_transactions"`
 	// Custom Fields
-	StartDate ledger.Date            `json:"startDate,omitempty"`
-	EndDate   ledger.Date            `json:"endDate,omitempty"`
+	StartDate time.Time              `json:"startDate,omitempty"`
+	EndDate   time.Time              `json:"endDate,omitempty"`
 	Options   *WebhookMessageOptions `json:"options,omitempty"`
 }
 
@@ -57,11 +56,11 @@ func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMes
 // PublishCustomWebhookMessage
 func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *WebhookMessage) error {
 
-	if webhook.StartDate.ToTime().IsZero() || webhook.EndDate.ToTime().IsZero() {
+	if webhook.StartDate.IsZero() || webhook.EndDate.IsZero() {
 		return errors.New("startDate and endDate are required")
 	}
 
-	if webhook.StartDate.ToTime().Unix() > webhook.EndDate.ToTime().Unix() {
+	if webhook.StartDate.Unix() > webhook.EndDate.Unix() {
 		return errors.New("startDate must be earlier than endDate")
 	}
 
@@ -73,16 +72,16 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 	}
 
 	oneHourSec := int64(86400)
-	if webhook.EndDate.ToTime().Unix()-webhook.StartDate.ToTime().Unix() < (oneHourSec * 24) {
+	if webhook.EndDate.Unix()-webhook.StartDate.Unix() < (oneHourSec * 24) {
 		return errors.New("startDate and endDate must be at least 24 hours apart")
 	}
 
-	if webhook.EndDate.ToTime().Unix()-webhook.StartDate.ToTime().Unix() > (int64(time.Hour) * 24 * 30 * 6) {
+	if webhook.EndDate.Unix()-webhook.StartDate.Unix() > (int64(time.Hour) * 24 * 30 * 6) {
 		return errors.New("startDate and endDate cannot be more than 6 months apart")
 	}
 
 	twoYearsAgo := time.Now().AddDate(-2, 0, 0)
-	if webhook.StartDate.ToTime().Unix() < twoYearsAgo.Unix() {
+	if webhook.StartDate.Unix() < twoYearsAgo.Unix() {
 		return fmt.Errorf("startDate cannot be earlier than %s", twoYearsAgo.Format("2006-01-02"))
 	}
 
