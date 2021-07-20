@@ -33,12 +33,12 @@ type Item struct {
 	UpdateType            null.String `db:"update_type" json:"updateType"`
 	ItemStatus            ItemStatus  `db:"item_status" json:"itemStatus"`
 
-	UserID       uuid.UUID `db:"user_id" json:"userID" deepcopier:"-"`
-	IsRefreshing bool      `db:"is_refreshing" json:"isRefreshing" deepcopier:"-"`
-	CreatedAt    time.Time `db:"created_at" json:"-" deepcopier:"-"`
-	UpdatedAt    time.Time `db:"updated_at" json:"-" deepcopier:"-"`
+	UserID       uuid.UUID `db:"user_id" json:"userID" deepcopier:"skip"`
+	IsRefreshing bool      `db:"is_refreshing" json:"isRefreshing" deepcopier:"skip"`
+	CreatedAt    time.Time `db:"created_at" json:"-" deepcopier:"skip"`
+	UpdatedAt    time.Time `db:"updated_at" json:"-" deepcopier:"skip"`
 
-	Institution *Institution `json:"institution,omitempty" deepcopier:"-"`
+	Institution *Institution `json:"institution,omitempty" deepcopier:"skip"`
 }
 
 type ItemStatus plaid.ItemStatus

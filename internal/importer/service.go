@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -112,15 +111,11 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	}
 	seg.End()
 
-	spew.Dump(existingItem)
-
 	err = deepcopier.Copy(item).To(existingItem)
 	if err != nil {
 		entry.WithError(err).Error("failed to copy plaid item to ledger item")
 		return
 	}
-
-	spew.Dump(existingItem)
 
 	seg = txn.StartSegment("updating item")
 	_, err = s.item.UpdateItem(ctx, existingItem.ItemID, existingItem)

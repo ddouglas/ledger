@@ -20,7 +20,7 @@ require (
 	github.com/plaid/plaid-go v0.0.0-20210525182452-1d0b06713a96
 	github.com/r3labs/diff v1.1.0
 	github.com/sirupsen/logrus v1.8.1
-	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6 // indirect
+	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/null v8.0.0+incompatible
