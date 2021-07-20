@@ -74,12 +74,12 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 		return fmt.Errorf("failed to verify item %s exists", webhook.ItemID)
 	}
 
-	oneHourSec := int64(86400)
+	oneHourSec := int64(3600)
 	if webhook.EndDate.Unix()-webhook.StartDate.Unix() < (oneHourSec * 24) {
 		return errors.New("startDate and endDate must be at least 24 hours apart")
 	}
 
-	if webhook.EndDate.Unix()-webhook.StartDate.Unix() > (int64(time.Hour) * 24 * 30 * 6) {
+	if webhook.EndDate.Unix()-webhook.StartDate.Unix() > (oneHourSec * 24 * 30 * 6) {
 		return errors.New("startDate and endDate cannot be more than 6 months apart")
 	}
 
