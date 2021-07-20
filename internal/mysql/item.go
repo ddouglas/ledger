@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ddouglas/ledger"
@@ -118,6 +119,8 @@ func (r *userItemRepository) CreateItem(ctx context.Context, item *ledger.Item) 
 }
 
 func (r *userItemRepository) UpdateItem(ctx context.Context, itemID string, item *ledger.Item) (*ledger.Item, error) {
+
+	fmt.Printf("\n\nUpdateItem: ItemID: %s\tObj:%+v\n\n\n", itemID, item)
 
 	query, args, err := sq.Update(userItemTable).
 		Set("user_id", item.UserID).
