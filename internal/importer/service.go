@@ -166,12 +166,13 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	seg.End()
 
 	if item.IsRefreshing {
+		entry.Info("Item is in refreshing state, updating to false")
 		item.IsRefreshing = false
-		_, err = s.item.UpdateItem(ctx, item.ItemID, item)
-		if err != nil {
-			entry.WithError(err).Error("failed to toggle isRefreshing flag on item")
-			return
-		}
+		// _, err = s.item.UpdateItem(ctx, item.ItemID, item)
+		// if err != nil {
+		// 	entry.WithError(err).Error("failed to toggle isRefreshing flag on item")
+		// 	return
+		// }
 	}
 
 	entry.Info("transactions processed successfully")
