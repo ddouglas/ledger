@@ -125,6 +125,19 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	}
 	seg.End()
 
+	seg = txn.StartSegment("updating accounts")
+	accounts, err := s.gateway.Accounts(ctx, existingItem.ItemID, existingItem.AccessToken)
+	if err != nil {
+		entry.WithError(err).Error("failed to update item")
+		return
+	}
+
+	for _, account := range accounts {
+		account.ItemID = existingItem.ItemID
+		_, err = s.account.UpdateAccount(ctx, existingItem.ItemID, account.AccountID, account)
+
+	}
+
 	seg = txn.StartSegment("evaluating webhook code")
 	var start, end time.Time
 	var accountIDs []string
