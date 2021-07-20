@@ -269,7 +269,7 @@ func (r *accountRepository) UpdateAccount(ctx context.Context, itemID, accountID
 	mapColValues := mapAccount(account)
 	mapColValues["updated_at"] = sq.Expr(`NOW()`)
 
-	query, args, err := sq.Update(accountTable).SetMap(mapColValues).ToSql()
+	query, args, err := sq.Update(accountTable).SetMap(mapColValues).Where(sq.Eq{"account_id": accountID, "item_id": itemID}).ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[UpdateAccount]")
 	}

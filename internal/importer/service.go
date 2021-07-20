@@ -126,7 +126,7 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	seg.End()
 
 	seg = txn.StartSegment("updating accounts")
-	accounts, err := s.gateway.Accounts(ctx, existingItem.ItemID, existingItem.AccessToken)
+	accounts, err := s.gateway.Accounts(ctx, existingItem.AccessToken)
 	if err != nil {
 		entry.WithError(err).Error("failed to update item")
 		return
@@ -135,8 +135,12 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	for _, account := range accounts {
 		account.ItemID = existingItem.ItemID
 		_, err = s.account.UpdateAccount(ctx, existingItem.ItemID, account.AccountID, account)
-
+		if err != nil {
+			entry.WithError(err).WithField("account_id", account.AccountID).Error("failed to update account")
+			return
+		}
 	}
+	seg.End()
 
 	seg = txn.StartSegment("evaluating webhook code")
 	var start, end time.Time
@@ -187,11 +191,11 @@ func (s *service) processTransactionUpdate(ctx context.Context, message *Webhook
 	if item.IsRefreshing {
 		entry.Info("Item is in refreshing state, updating to false")
 		item.IsRefreshing = false
-		// _, err = s.item.UpdateItem(ctx, item.ItemID, item)
-		// if err != nil {
-		// 	entry.WithError(err).Error("failed to toggle isRefreshing flag on item")
-		// 	return
-		// }
+		_, err = s.item.UpdateItem(ctx, item.ItemID, item)
+		if err != nil {
+			entry.WithError(err).Error("failed to toggle isRefreshing flag on item")
+			return
+		}
 	}
 
 	entry.Info("transactions processed successfully")
