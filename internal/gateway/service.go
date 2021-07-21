@@ -180,7 +180,7 @@ func (s *service) Transactions(ctx context.Context, accessToken string, startDat
 
 		plaidTransactions = append(plaidTransactions, optsResponse.Transactions...)
 		entry.WithField("plaidTransactionLength", len(plaidTransactions)).Info()
-		time.Sleep(time.Millisecond * 500)
+		// time.Sleep(time.Millisecond * 500)
 
 	}
 

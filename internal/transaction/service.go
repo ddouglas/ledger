@@ -57,6 +57,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			}
 
 			sleep()
+			sleep()
 			continue
 
 		}
@@ -65,7 +66,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 		if !transaction.Pending {
 			entry.Info("transactions is not pending, skipping")
-			sleep()
+			// sleep()
 			continue
 		}
 
@@ -78,7 +79,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		if len(changelog) == 0 {
 			entry.Info("diff between plaidTransaction and transaction is 0, skipping update")
 
-			sleep()
+			// sleep()
 			continue
 		}
 
@@ -96,7 +97,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
 		}
 
-		sleep()
+		// sleep()
 
 	}
 
