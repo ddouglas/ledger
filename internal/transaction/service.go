@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/r3labs/diff"
 	"github.com/sirupsen/logrus"
+	"github.com/ulule/deepcopier"
 )
 
 type Service interface {
@@ -31,11 +32,11 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 	for _, plaidTransaction := range newTrans {
 
 		entry := s.logger.WithContext(ctx)
-		entry = entry.WithField("transaction_id", plaidTransaction.TransactionID)
-		entry.WithFields(logrus.Fields{
+		entry = entry.WithFields(logrus.Fields{
 			"id":   plaidTransaction.TransactionID,
 			"date": plaidTransaction.Date.Format("2006-01-02"),
-		}).Info("processing transaction")
+		})
+		entry.Info("processing transaction")
 
 		transaction, err := s.Transaction(ctx, item.ItemID, plaidTransaction.TransactionID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -49,13 +50,13 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 			plaidTransaction.ItemID = item.ItemID
 
-			// _, err := s.CreateTransaction(ctx, plaidTransaction)
-			// if err != nil {
-			// 	entry.WithError(err).Error()
-			// 	return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
-			// }
+			_, err := s.CreateTransaction(ctx, plaidTransaction)
+			if err != nil {
+				entry.WithError(err).Error()
+				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
+			}
 
-			time.Sleep(time.Second)
+			time.Sleep(time.Millisecond * 250)
 			continue
 
 		}
@@ -69,22 +70,22 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		}
 
 		if len(changelog) > 0 {
-			entry.WithField("changelog", changelog)
+			entry.WithField("changelog", changelog).Info("changes")
 		}
 
-		// err = deepcopier.Copy(plaidTransaction).To(transaction)
-		// if err != nil {
-		// 	entry.WithError(err).Error()
-		// 	return fmt.Errorf("failed to copy plaidTransaction to ledgerTransaction")
-		// }
+		err = deepcopier.Copy(plaidTransaction).To(transaction)
+		if err != nil {
+			entry.WithError(err).Error()
+			return fmt.Errorf("failed to copy plaidTransaction to ledgerTransaction")
+		}
 
-		// _, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
-		// if err != nil {
-		// 	entry.WithError(err).Error()
-		// 	return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
-		// }
+		_, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
+		if err != nil {
+			entry.WithError(err).Error()
+			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
+		}
 
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 250)
 
 	}
 
