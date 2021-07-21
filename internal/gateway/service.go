@@ -206,8 +206,16 @@ func (s *service) Transactions(ctx context.Context, accessToken string, startDat
 
 func (s *service) Accounts(ctx context.Context, accessToken string) ([]*ledger.Account, error) {
 
+	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
+		"service":            "gateway",
+		"method":             "Accounts",
+		"accessTokenTrimmed": accessToken[0:8],
+	})
+	entry.Info("fetching accounts for accessToken")
+
 	response, err := s.client.GetAccounts(accessToken)
 	if err != nil {
+		entry.WithError(err).Error("failed to fetch accounts")
 		return nil, fmt.Errorf("failed to fetch accounts from plaid: %w", err)
 	}
 
@@ -219,6 +227,7 @@ func (s *service) Accounts(ctx context.Context, accessToken string) ([]*ledger.A
 
 	}
 
+	entry.Info("accounts fetched successfully")
 	return accounts, nil
 
 }
