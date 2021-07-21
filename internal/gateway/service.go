@@ -31,6 +31,13 @@ func New(optFuncs ...configOption) Service {
 
 func (s *service) LinkToken(ctx context.Context, user *ledger.User) (string, error) {
 
+	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
+		"service": "gateway",
+		"method":  "LinkToken",
+		"userID":  user.ID,
+	})
+	entry.Info("fetch link token")
+
 	linkConfig := plaid.LinkTokenConfigs{}
 	if len(s.products) > 0 {
 		linkConfig.Products = s.products
@@ -53,32 +60,46 @@ func (s *service) LinkToken(ctx context.Context, user *ledger.User) (string, err
 
 	linkResponse, err := s.client.CreateLinkToken(linkConfig)
 	if err != nil {
+		entry.WithError(err).Error("failed to fetch link token")
 		return "", err
 	}
 
+	entry.Info("token fetched successfully")
 	return linkResponse.LinkToken, nil
 
 }
 
 func (s *service) WebhookVerificationKey(ctx context.Context, keyID string) (*plaid.WebhookVerificationKey, error) {
-	s.logger.WithFields(logrus.Fields{
+	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
 		"service": "gateway",
-		"method":  "webhookVerificationKey",
+		"method":  "WebhookVerificationKey",
 		"keyID":   keyID,
 	})
+	entry.Info("fetch webhook verification key")
+
 	response, err := s.client.GetWebhookVerificationKey(keyID)
 	if err != nil {
+		entry.WithError(err).Error("failed to fetch webhook verification key")
 		return nil, fmt.Errorf("failed to fetch webhook verification key: %w", err)
 	}
 
+	entry.Info("key fetched successfully")
 	return &response.Key, nil
 
 }
 
 func (s *service) Item(ctx context.Context, accessToken string) (*ledger.Item, error) {
 
+	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
+		"service":            "gateway",
+		"method":             "Item",
+		"accessTokenTrimmed": accessToken[0:8],
+	})
+	entry.Info("fetching item for accessToken")
+
 	response, err := s.client.GetItem(accessToken)
 	if err != nil {
+		entry.WithError(err).Error("failed to fetch item")
 		return nil, fmt.Errorf("failed to fetch item for provided access token: %w", err)
 	}
 
@@ -95,6 +116,7 @@ func (s *service) Item(ctx context.Context, accessToken string) (*ledger.Item, e
 		ItemStatus:            ledger.ItemStatus(response.Status),
 	}
 
+	entry.Info("item fetched successfully")
 	return item, nil
 
 }
