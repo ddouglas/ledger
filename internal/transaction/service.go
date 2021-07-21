@@ -56,12 +56,18 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
 			}
 
-			time.Sleep(time.Millisecond * 250)
+			sleep()
 			continue
 
 		}
 
 		entry.Info("existing transaction discover, updating record")
+
+		if !transaction.Pending {
+			entry.Info("transactions is not pending, skipping")
+			sleep()
+			continue
+		}
 
 		changelog, err := diff.Diff(transaction, plaidTransaction)
 		if err != nil {
@@ -69,9 +75,14 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			return fmt.Errorf("unable to determine updated attributes of transaction")
 		}
 
-		if len(changelog) > 0 {
-			entry.WithField("changelog", changelog).Info("changes")
+		if len(changelog) == 0 {
+			entry.Info("diff between plaidTransaction and transaction is 0, skipping update")
+
+			sleep()
+			continue
 		}
+
+		entry = entry.WithField("changelog", changelog)
 
 		err = deepcopier.Copy(plaidTransaction).To(transaction)
 		if err != nil {
@@ -85,12 +96,15 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
 		}
 
-		time.Sleep(time.Millisecond * 250)
+		sleep()
 
 	}
 
 	return nil
 
+}
+func sleep() {
+	time.Sleep(time.Millisecond * 250)
 }
 
 func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
