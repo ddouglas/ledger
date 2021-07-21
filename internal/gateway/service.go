@@ -7,6 +7,7 @@ import (
 
 	"github.com/ddouglas/ledger"
 	"github.com/plaid/plaid-go/plaid"
+	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/null"
 )
 
@@ -17,14 +18,6 @@ type Service interface {
 	LinkToken(ctx context.Context, user *ledger.User) (string, error)
 	Transactions(ctx context.Context, accessToken string, startDate, endDate time.Time, accountIDs []string) ([]*ledger.Transaction, error)
 	WebhookVerificationKey(ctx context.Context, keyID string) (*plaid.WebhookVerificationKey, error)
-}
-
-type service struct {
-	client       *plaid.Client
-	products     []string
-	language     *string
-	webhook      *string
-	countryCodes []string
 }
 
 func New(optFuncs ...configOption) Service {
@@ -68,7 +61,11 @@ func (s *service) LinkToken(ctx context.Context, user *ledger.User) (string, err
 }
 
 func (s *service) WebhookVerificationKey(ctx context.Context, keyID string) (*plaid.WebhookVerificationKey, error) {
-
+	s.logger.WithFields(logrus.Fields{
+		"service": "gateway",
+		"method":  "webhookVerificationKey",
+		"keyID":   keyID,
+	})
 	response, err := s.client.GetWebhookVerificationKey(keyID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch webhook verification key: %w", err)

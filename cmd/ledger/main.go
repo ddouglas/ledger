@@ -199,6 +199,7 @@ func buildGateway() gateway.Service {
 		gateway.WithCountryCode("US"),
 		gateway.WithProducts("auth", "transactions"),
 		gateway.WithWebhook(cfg.Plaid.Webhook),
+		gateway.WithLogger(logger),
 	)
 
 }

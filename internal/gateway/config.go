@@ -1,12 +1,30 @@
 package gateway
 
-import "github.com/plaid/plaid-go/plaid"
+import (
+	"github.com/plaid/plaid-go/plaid"
+	"github.com/sirupsen/logrus"
+)
 
 const (
 	PubSubPlaidWebhook = "plaid-webhook"
 )
 
+type service struct {
+	client       *plaid.Client
+	logger       *logrus.Logger
+	products     []string
+	language     *string
+	webhook      *string
+	countryCodes []string
+}
+
 type configOption func(s *service)
+
+func WithLogger(logger *logrus.Logger) configOption {
+	return func(s *service) {
+		s.logger = logger
+	}
+}
 
 func WithProducts(products ...string) configOption {
 	return func(s *service) {
