@@ -52,6 +52,7 @@ CREATE TABLE `accounts` (
     `unofficial_currency_code` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_bin',
     `subtype` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_bin',
     `type` VARCHAR(128) NULL DEFAULT NULL COLLATE 'utf8mb4_bin',
+    `recalculate_balance` TINYINT(1) NOT NULL DEFAULT '0',
     `created_at` DATETIME NOT NULL,
     `updated_at` DATETIME NOT NULL,
     PRIMARY KEY (`item_id`, `account_id`) USING BTREE,

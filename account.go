@@ -20,16 +20,17 @@ type AccountRepository interface {
 }
 
 type Account struct {
-	ItemID       string          `db:"item_id" json:"itemID"`
-	AccountID    string          `db:"account_id" json:"accountID"`
-	Balance      *AccountBalance `json:"balance"`
-	Mask         null.String     `db:"mask" json:"mask"`
-	Name         null.String     `db:"name" json:"name"`
-	OfficialName null.String     `db:"official_name" json:"officialName"`
-	Subtype      null.String     `db:"subtype" json:"subtype"`
-	Type         null.String     `db:"type" json:"type"`
-	CreatedAt    time.Time       `db:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time       `db:"updated_at" json:"updated_at"`
+	ItemID             string          `db:"item_id" json:"itemID"`
+	AccountID          string          `db:"account_id" json:"accountID"`
+	Balance            *AccountBalance `json:"balance"`
+	Mask               null.String     `db:"mask" json:"mask"`
+	Name               null.String     `db:"name" json:"name"`
+	OfficialName       null.String     `db:"official_name" json:"officialName"`
+	Subtype            null.String     `db:"subtype" json:"subtype"`
+	Type               null.String     `db:"type" json:"type"`
+	RecalculateBalance bool            `db:"recalculate_balance" json:"recalculateBalance"`
+	CreatedAt          time.Time       `db:"created_at" json:"createdAt"`
+	UpdatedAt          time.Time       `db:"updated_at" json:"updated_at"`
 }
 
 func (a *Account) FromPlaidAccount(itemID string, account plaid.Account) {
@@ -49,6 +50,7 @@ func (a *Account) FromPlaidAccount(itemID string, account plaid.Account) {
 			ISOCurrencyCode:        account.Balances.ISOCurrencyCode,
 			UnofficialCurrencyCode: null.NewString(account.Balances.UnofficialCurrencyCode, account.Balances.UnofficialCurrencyCode != ""),
 		},
+		RecalculateBalance: true,
 	}
 
 }

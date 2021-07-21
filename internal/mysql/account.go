@@ -33,6 +33,7 @@ var accountColumns = []string{
 	"unofficial_currency_code",
 	"subtype",
 	"type",
+	"recalculate_balance",
 	"created_at",
 	"updated_at",
 }
