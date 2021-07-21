@@ -123,11 +123,20 @@ func (s *service) Item(ctx context.Context, accessToken string) (*ledger.Item, e
 
 func (s *service) ExchangePublicToken(ctx context.Context, publicToken string) (itemID, accessToken string, err error) {
 
+	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
+		"service":     "gateway",
+		"method":      "ExchangePublicToken",
+		"publicToken": publicToken,
+	})
+	entry.Info("exchanging public token")
+
 	response, err := s.client.ExchangePublicToken(publicToken)
 	if err != nil {
+		entry.WithError(err).Info("failed to exchange public token")
 		return "", "", fmt.Errorf("failed to exchange public token: %w", err)
 	}
 
+	entry.WithField("itemID", response.ItemID).Info("public token exchanged successfully")
 	return response.ItemID, response.AccessToken, nil
 
 }
@@ -144,8 +153,16 @@ func (s *service) Transactions(ctx context.Context, accessToken string, startDat
 		opts.AccountIDs = accountIDs
 	}
 
+	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
+		"service": "gateway",
+		"method":  "Transactions",
+		"options": opts,
+	})
+	entry.Info("fetching transactions")
+
 	response, err := s.client.GetTransactionsWithOptions(accessToken, opts)
 	if err != nil {
+		entry.WithError(err).Error("failed to fetch transactions")
 		return nil, fmt.Errorf("failed to fetch transactions: %w", err)
 	}
 
@@ -154,15 +171,20 @@ func (s *service) Transactions(ctx context.Context, accessToken string, startDat
 
 	for len(plaidTransactions) < response.TotalTransactions {
 		opts.Offset = len(plaidTransactions)
+		entry := entry.WithField("options", opts)
 		optsResponse, err := s.client.GetTransactionsWithOptions(accessToken, opts)
 		if err != nil {
+			entry.WithError(err).Error("failed to fetch transactions")
 			return nil, fmt.Errorf("failed to fetch transactions with options: %w", err)
 		}
 
 		plaidTransactions = append(plaidTransactions, optsResponse.Transactions...)
-		time.Sleep(time.Second)
+		entry.WithField("plaidTransactionLength", len(plaidTransactions)).Info()
+		time.Sleep(time.Millisecond * 500)
 
 	}
+
+	entry.WithField("plaidTransactionLength", len(plaidTransactions)).Info("transactions fetched successfully")
 
 	var transactions = make([]*ledger.Transaction, 0, len(plaidTransactions))
 
