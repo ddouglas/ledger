@@ -39,7 +39,7 @@ type Transaction struct {
 	AuthorizedDate         null.Time   `db:"authorized_date" json:"authorizedDate"`
 	AuthorizedDateTime     null.Time   `db:"authorized_datetime" json:"authorizedDateTime"`
 	Date                   time.Time   `db:"date" json:"date"`
-	DateTime               null.Time   `db:"datetime" json:"dateTime"`
+	DateTime               null.Time   `db:"datetime" json:"dateTime" diff:"-"`
 	DeletedAt              null.Time   `db:"deleted_at" json:"deletedAt" diff:"-"`
 	HiddenAt               null.Time   `db:"hidden_at" json:"hiddenAt" diff:"-"`
 	CreatedAt              time.Time   `db:"created_at" json:"-" diff:"-"`

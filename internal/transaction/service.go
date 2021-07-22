@@ -55,8 +55,9 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				return fmt.Errorf("failed to fetch transactions from DB")
 			}
 
+			plaidTransaction.ItemID = item.ItemID
+
 			if err != nil && errors.Is(err, sql.ErrNoRows) {
-				plaidTransaction.ItemID = item.ItemID
 				plaidTransaction.DateTime.SetValid(plaidTransaction.Date)
 			}
 
@@ -65,32 +66,23 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 					return transactions[i].DateTime.Time.Unix() < transactions[j].DateTime.Time.Unix()
 				})
 
+				firstTransForDate := transactions[0]
+				nextTransDatetime := firstTransForDate.DateTime.Time.Add(time.Second)
+				plaidTransaction.DateTime.SetValid(nextTransDatetime)
 			}
 
-			// if err != nil && errors.Is(err, sql.ErrNoRows) {
-			// 	entry.WithError(err).Error()
-			// 	return fmt.Errorf("failed to fetch transactions from DB")
-			// }
-
-			// if no transactions for this date came back, they
-			if len(transactions) == 0 {
-				plaidTransaction.ItemID = item.ItemID
-
-				_, err := s.CreateTransaction(ctx, plaidTransaction)
-				if err != nil {
-					entry.WithError(err).Error()
-					return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
-				}
-
+			_, err = s.CreateTransaction(ctx, plaidTransaction)
+			if err != nil {
+				entry.WithError(err).Error()
+				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
 			}
 
-			sleep()
 			sleep()
 			continue
 
 		}
 
-		entry.Info("existing transaction discover, updating record")
+		entry.Info("existing transaction discovered, updating record")
 
 		if !transaction.Pending {
 			entry.Info("transactions is not pending, skipping")
@@ -125,7 +117,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
 		}
 
-		// sleep()
+		sleep()
 
 	}
 
@@ -134,7 +126,8 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 }
 
 func sleep() {
-	time.Sleep(time.Millisecond * 250)
+	time.Sleep(time.Second * 5)
+	// time.Sleep(time.Millisecond * 250)
 }
 
 func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
