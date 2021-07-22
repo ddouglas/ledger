@@ -14,6 +14,7 @@ import (
 
 type TransactionRepository interface {
 	Transaction(ctx context.Context, itemID, transactionID string) (*Transaction, error)
+	TransactionsCount(ctx context.Context, itemID, accountID string) (uint64, error)
 	TransactionsPaginated(ctx context.Context, itemID, accountID string, filters *TransactionFilter) ([]*Transaction, error)
 	TransactionsByDate(ctx context.Context, itemID string, date time.Time) ([]*Transaction, error)
 	TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*Transaction, error)
@@ -57,7 +58,7 @@ type Transaction struct {
 type TransactionFilter struct {
 	FromTransactionID *StringFilter
 	FromIterator      *NumberFilter
-	Count             null.Uint64 `json:"count"`
+	Limit             null.Uint64
 }
 
 func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {

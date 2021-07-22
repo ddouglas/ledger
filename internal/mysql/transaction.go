@@ -40,7 +40,7 @@ var transactionColumns = []string{
 	"updated_at",
 }
 
-const tableName = "transactions"
+const transactionsTableName = "transactions"
 
 func NewTransactionRepository(db *sqlx.DB) ledger.TransactionRepository {
 	return &transactionRepository{db: db}
@@ -48,7 +48,7 @@ func NewTransactionRepository(db *sqlx.DB) ledger.TransactionRepository {
 
 func (r *transactionRepository) Transaction(ctx context.Context, itemID, transactionID string) (*ledger.Transaction, error) {
 
-	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{
+	query, args, err := sq.Select(transactionColumns...).From(transactionsTableName).Where(sq.Eq{
 		"item_id":        itemID,
 		"transaction_id": transactionID,
 	}).ToSql()
@@ -65,7 +65,7 @@ func (r *transactionRepository) Transaction(ctx context.Context, itemID, transac
 
 func (r *transactionRepository) TransactionsByDate(ctx context.Context, itemID string, date time.Time) ([]*ledger.Transaction, error) {
 
-	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{
+	query, args, err := sq.Select(transactionColumns...).From(transactionsTableName).Where(sq.Eq{
 		"item_id": itemID,
 		"date":    date.Format("2006-01-02"),
 	}).ToSql()
@@ -80,10 +80,26 @@ func (r *transactionRepository) TransactionsByDate(ctx context.Context, itemID s
 
 }
 
+func (r *transactionRepository) TransactionsCount(ctx context.Context, itemID, accountID string) (uint64, error) {
+
+	var count uint64
+	query, args, err := sq.Select(`COUNT(*)`).From(transactionsTableName).Where(sq.Eq{
+		"item_id":    itemID,
+		"account_id": accountID,
+	}).ToSql()
+	if err != nil {
+		return 0, errors.Wrap(err, "[mysql.TransactionsPaginated]")
+	}
+
+	err = r.db.GetContext(ctx, &count, query, args...)
+	return count, err
+
+}
+
 func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
 
 	stmt := sq.Select(transactionColumns...).
-		From(tableName).
+		From(transactionsTableName).
 		Where(sq.Eq{
 			"item_id":    itemID,
 			"account_id": accountID,
@@ -94,8 +110,8 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 			// https://github.com/Masterminds/squirrel/issues/258#issuecomment-673315028
 			stmt = stmt.Where(transactionIDSubQuery(filters.FromTransactionID.String))
 		}
-		if filters.Count.Valid {
-			stmt = stmt.Limit(filters.Count.Uint64)
+		if filters.Limit.Valid {
+			stmt = stmt.Limit(filters.Limit.Uint64)
 		}
 	}
 
@@ -115,13 +131,13 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 }
 
 func transactionIDSubQuery(transactionID string) squirrel.Sqlizer {
-	sql, args, _ := sq.Select("date").From(tableName).Where(sq.Eq{"transaction_id": transactionID}).ToSql()
+	sql, args, _ := sq.Select("date").From(transactionsTableName).Where(sq.Eq{"transaction_id": transactionID}).ToSql()
 	return sq.Expr(fmt.Sprintf("date <= (%s)", sql), args...)
 }
 
 func (r *transactionRepository) TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*ledger.Transaction, error) {
 
-	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{"item_id": itemID, "transaction_id": transactionIDs}).ToSql()
+	query, args, err := sq.Select(transactionColumns...).From(transactionsTableName).Where(sq.Eq{"item_id": itemID, "transaction_id": transactionIDs}).ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[mysql.TransactionsByTransactionIDs]")
 	}
@@ -173,7 +189,7 @@ func (r *transactionRepository) CreateTransaction(ctx context.Context, transacti
 
 func (r *transactionRepository) UpdateTransaction(ctx context.Context, transactionID string, transaction *ledger.Transaction) (*ledger.Transaction, error) {
 
-	query, args, err := sq.Update(tableName).
+	query, args, err := sq.Update(transactionsTableName).
 		Set("item_id", transaction.ItemID).
 		Set("account_id", transaction.AccountID).
 		Set("transaction_id", transaction.TransactionID).

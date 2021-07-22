@@ -51,20 +51,21 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 	var filters = new(ledger.TransactionFilter)
 	fromTransactionID := r.URL.Query().Get("fromTransactionID")
-	count := r.URL.Query().Get("count")
+	limit := r.URL.Query().Get("limit")
 	if fromTransactionID != "" {
 		filters.FromTransactionID = &ledger.StringFilter{String: fromTransactionID, Operation: ledger.LtOperation}
 	}
-	if count != "" {
-		parsedCount, err := strconv.ParseUint(count, 10, 64)
+	if limit != "" {
+		parsedCount, err := strconv.ParseUint(limit, 10, 64)
 		if err != nil {
 			GetLogEntry(r).WithError(err).Error()
-			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in count query param to valid uint64"))
+			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in limit query param to valid uint64"))
 			return
 		}
 
 		filters.Count = null.Uint64From(parsedCount)
 	}
+	var results = new(ledger.PaginatedTransactions)
 
 	transactions, err := s.transaction.TransactionsPaginated(ctx, itemID, accountID, filters)
 	if err != nil {
@@ -72,6 +73,17 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))
 		return
 	}
+
+	results.Transactions = transactions
+
+	count, err := s.transaction.TransactionsCount(ctx, itemID, accountID)
+	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))
+		return
+	}
+
+	results.Total = count
 
 	s.writeResponse(ctx, w, http.StatusOK, transactions)
 
