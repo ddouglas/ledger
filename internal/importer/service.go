@@ -40,7 +40,7 @@ func (s *service) Run() {
 		txn := s.newrelic.StartTransaction("check-plaid-message-queue")
 		ctx := newrelic.NewContext(context.Background(), txn)
 		entry := s.logger.WithContext(ctx)
-		entry.Info("checking message queue")
+		entry.Debug("checking message queue")
 
 		data, err := s.redis.LPop(ctx, gateway.PubSubPlaidWebhook).Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
@@ -51,7 +51,7 @@ func (s *service) Run() {
 		}
 
 		if err != nil && errors.Is(err, redis.Nil) {
-			// entry.Info("received nil, going to sleep")
+			entry.Debug("received nil, going to sleep")
 			txn.Ignore()
 			sleep()
 			continue
