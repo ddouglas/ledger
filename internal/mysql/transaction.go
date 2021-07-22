@@ -65,7 +65,7 @@ func (r *transactionRepository) TransactionsByDate(ctx context.Context, itemID s
 
 	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{
 		"item_id": itemID,
-		"date":    date,
+		"date":    date.Format("2006-01-02"),
 	}).ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate sql stmt: %w", err)

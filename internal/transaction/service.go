@@ -55,13 +55,18 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				return fmt.Errorf("failed to fetch transactions from DB")
 			}
 
+			entry = entry.WithField("count", len(transactions))
+			entry = entry.WithError(err)
 			plaidTransaction.ItemID = item.ItemID
 
 			if err != nil && errors.Is(err, sql.ErrNoRows) {
+				entry.Info("no records exist for date, set dateTime to date")
+
 				plaidTransaction.DateTime.SetValid(plaidTransaction.Date)
 			}
 
 			if err == nil && len(transactions) > 0 {
+				entry.Info("no records exist for date, set dateTime to date")
 				sort.SliceStable(transactions, func(i, j int) bool {
 					return transactions[i].DateTime.Time.Unix() < transactions[j].DateTime.Time.Unix()
 				})
@@ -69,6 +74,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				firstTransForDate := transactions[0]
 				nextTransDatetime := firstTransForDate.DateTime.Time.Add(time.Second)
 				plaidTransaction.DateTime.SetValid(nextTransDatetime)
+				entry.WithField("dateTime", nextTransDatetime).WithField("transaction_id", plaidTransaction.TransactionID).Info("setting transaction datetime")
 			}
 
 			_, err = s.CreateTransaction(ctx, plaidTransaction)
@@ -76,7 +82,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				entry.WithError(err).Error()
 				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
 			}
-
+			entry.Info("transaction created successfully")
 			sleep()
 			continue
 
