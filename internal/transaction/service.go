@@ -3,6 +3,7 @@ package transaction
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/ddouglas/ledger"
@@ -22,6 +23,20 @@ func New(optFuncs ...configOption) Service {
 }
 
 func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error {
+
+	sort.SliceStable(newTrans, func(i, j int) bool {
+
+		// var next = newTrans[j]
+		newTrans[i].DateTime.SetValid(newTrans[i].Date)
+		newTrans[j].DateTime.SetValid(newTrans[j].Date)
+
+		if newTrans[i].DateTime.Time == newTrans[j].DateTime.Time {
+			newTrans[j].DateTime.Time.Add(time.Second)
+		}
+
+		return newTrans[i].DateTime.Time.Unix() < newTrans[j].DateTime.Time.Unix()
+
+	})
 
 	// for _, plaidTransaction := range newTrans {
 
