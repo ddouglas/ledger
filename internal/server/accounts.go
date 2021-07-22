@@ -21,24 +21,30 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 	itemID := chi.URLParam(r, "itemID")
 	if itemID == "" {
-		s.writeError(ctx, w, http.StatusBadRequest, errors.New("itemID is required"))
+		err := errors.New("itemID is required")
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, err)
 		return
 	}
 
 	_, err := s.item.ItemByUserID(ctx, user.ID, itemID)
 	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to verify ownership"))
 		return
 	}
 
 	accountID := chi.URLParam(r, "accountID")
 	if accountID == "" {
-		s.writeError(ctx, w, http.StatusBadRequest, errors.New("accountID is required"))
+		err := errors.New("accountID is required")
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, err)
 		return
 	}
 
 	_, err = s.account.Account(ctx, itemID, accountID)
 	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch account"))
 		return
 	}
@@ -50,7 +56,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 		parsedCount, err := strconv.ParseUint(count, 10, 64)
 		if err != nil {
-			s.logger.WithError(err).Error()
+			GetLogEntry(r).WithError(err).Error()
 			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in count query param to valid uint64"))
 			return
 		}
@@ -63,6 +69,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 	transactions, err := s.transaction.TransactionsByAccountID(ctx, itemID, accountID, filters)
 	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))
 		return
 	}
