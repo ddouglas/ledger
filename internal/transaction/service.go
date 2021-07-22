@@ -43,17 +43,19 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 	for _, transaction := range newTrans {
 
 		if _, ok := transactionMap[transaction.Date.Format(dateFmt)]; !ok {
-			transactionMap[dateFmt] = make([]*ledger.Transaction, 0, 10)
+			transactionMap[transaction.Date.Format(dateFmt)] = make([]*ledger.Transaction, 0, 10)
 		}
 
-		transactionMap[dateFmt] = append(transactionMap[dateFmt], transaction)
+		transactionMap[transaction.Date.Format(dateFmt)] = append(transactionMap[transaction.Date.Format(dateFmt)], transaction)
 
 	}
 
 	for _, transactions := range transactionMap {
 		numTransactions := len(transactions)
-
-		fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, tran.Date.Format("2006-01-02"), tran.DateTime.Time.Format("2006-01-02 15:04:05"))
+		fmt.Println(numTransactions)
+		for i, transaction := range transactions {
+			fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, transaction.Date.Format("2006-01-02"), transaction.DateTime.Time.Format("2006-01-02 15:04:05"))
+		}
 
 	}
 
