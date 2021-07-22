@@ -83,7 +83,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
 			}
 			entry.Info("transaction created successfully")
-			sleep()
+			// sleep()
 			continue
 
 		}
@@ -123,7 +123,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
 		}
 
-		sleep()
+		// sleep()
 
 	}
 
@@ -132,8 +132,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 }
 
 func sleep() {
-	time.Sleep(time.Second * 15)
-	// time.Sleep(time.Millisecond * 250)
+	time.Sleep(time.Millisecond * 250)
 }
 
 func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
