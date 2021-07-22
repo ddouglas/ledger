@@ -52,8 +52,10 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 	var filters = new(ledger.TransactionFilter)
 	fromTransactionID := r.URL.Query().Get("fromTransactionID")
 	count := r.URL.Query().Get("count")
-	if fromTransactionID != "" && count != "" {
-
+	if fromTransactionID != "" {
+		filters.FromTransactionID = &ledger.StringFilter{String: fromTransactionID, Operation: ledger.LtOperation}
+	}
+	if count != "" {
 		parsedCount, err := strconv.ParseUint(count, 10, 64)
 		if err != nil {
 			GetLogEntry(r).WithError(err).Error()
@@ -61,10 +63,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		filters = &ledger.TransactionFilter{
-			FromTransactionID: &ledger.StringFilter{String: fromTransactionID, Operation: ledger.LtOperation},
-			Count:             null.Uint64From(parsedCount),
-		}
+		filters.Count = null.Uint64From(parsedCount)
 	}
 
 	transactions, err := s.transaction.TransactionsPaginated(ctx, itemID, accountID, filters)
