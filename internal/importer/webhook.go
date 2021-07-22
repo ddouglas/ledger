@@ -78,12 +78,12 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 
 	startDateMax := webhook.EndDate.AddDate(-1, 0, 0)
 	if webhook.StartDate.Unix() < startDateMax.Unix() {
-		return errors.New("startDate and endDate cannot be more than 6 months apart")
+		return errors.New("startDate and endDate cannot be more than 12 months apart")
 	}
 
 	twoYearsAgo := time.Now().AddDate(-2, 0, 0)
 	if webhook.StartDate.Unix() < twoYearsAgo.Unix() {
-		return fmt.Errorf("startDate cannot be earlier than %s", twoYearsAgo.Format("2006-01-02"))
+		return fmt.Errorf("startDate cannot be earlier than %s", twoYearsAgo.Format("2006-01-02 15:04:05"))
 	}
 
 	webhook.WebhookType = "TRANSACTIONS"
