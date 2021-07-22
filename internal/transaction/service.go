@@ -4,7 +4,6 @@ package transaction
 import (
 	"context"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/ddouglas/ledger"
@@ -25,19 +24,19 @@ func New(optFuncs ...configOption) Service {
 
 func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error {
 
-	sort.SliceStable(newTrans, func(i, j int) bool {
+	// sort.SliceStable(newTrans, func(i, j int) bool {
 
-		// var next = newTrans[j]
-		newTrans[i].DateTime.SetValid(newTrans[i].Date)
-		newTrans[j].DateTime.SetValid(newTrans[j].Date)
+	// 	// var next = newTrans[j]
+	// 	newTrans[i].DateTime.SetValid(newTrans[i].Date)
+	// 	newTrans[j].DateTime.SetValid(newTrans[j].Date)
 
-		if newTrans[i].DateTime.Time == newTrans[j].DateTime.Time {
-			newTrans[j].DateTime.Time.Add(time.Second)
-		}
+	// 	if newTrans[i].DateTime.Time == newTrans[j].DateTime.Time {
+	// 		newTrans[j].DateTime.SetValid(newTrans[j].DateTime.Time.Add(time.Second))
+	// 	}
 
-		return newTrans[i].DateTime.Time.Unix() < newTrans[j].DateTime.Time.Unix()
+	// 	return newTrans[i].DateTime.Time.Unix() > newTrans[j].DateTime.Time.Unix()
 
-	})
+	// })
 
 	for i, tran := range newTrans {
 		fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, tran.Date.Format("2006-01-02"), tran.DateTime.Time.Format("2006-01-02 15:04:05"))

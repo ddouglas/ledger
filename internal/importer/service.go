@@ -76,7 +76,7 @@ func (s *service) Run() {
 }
 
 func sleep() {
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 1)
 }
 
 func (s *service) processMessage(ctx context.Context, message *WebhookMessage) {
