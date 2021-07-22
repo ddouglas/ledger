@@ -90,8 +90,12 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 		OrderBy("date desc", "pending desc")
 	if filters != nil {
 		if filters.FromTransactionID != nil {
-			subStmt := sq.Select("date").From(tableName).Where(sq.Eq{"transaction_id": filters.FromTransactionID.String})
-			stmt = stmt.Where(sq.LtOrEq{"date": subStmt})
+			// https://github.com/Masterminds/squirrel/issues/258#issuecomment-673315028
+
+			subStmt, subArgs, _ := sq.Select("date").From(tableName).Where(sq.Eq{"transaction_id": filters.FromTransactionID.String}).ToSql()
+			fmt.Println("Sub TransactionID Query", subStmt)
+			spew.Dump(subArgs...)
+			stmt = stmt.Where(sq.LtOrEq{"date": subStmt}, subArgs...)
 		}
 		if filters.Count.Valid {
 			stmt = stmt.Limit(filters.Count.Uint64)
