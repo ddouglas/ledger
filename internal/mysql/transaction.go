@@ -61,12 +61,11 @@ func (r *transactionRepository) Transaction(ctx context.Context, itemID, transac
 
 }
 
-func (r *transactionRepository) TransactionsByDate(ctx context.Context, itemID, accountID, date time.Time) ([]*ledger.Transaction, error) {
+func (r *transactionRepository) TransactionsByDate(ctx context.Context, itemID string, date time.Time) ([]*ledger.Transaction, error) {
 
 	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{
-		"item_id":    itemID,
-		"account_id": accountID,
-		"date":       date,
+		"item_id": itemID,
+		"date":    date,
 	}).ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate sql stmt: %w", err)

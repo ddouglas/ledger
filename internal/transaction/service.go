@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/ddouglas/ledger"
@@ -48,18 +49,39 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 			entry.Info("new transaction detected, fetching records for date")
 
-			transaction, err := s.Transaction(ctx, item.ItemID, plaidTransaction.TransactionID)
+			transactions, err := s.TransactionsByDate(ctx, item.ItemID, transaction.Date)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				entry.WithError(err).Error()
 				return fmt.Errorf("failed to fetch transactions from DB")
 			}
 
-			plaidTransaction.ItemID = item.ItemID
+			if err != nil && errors.Is(err, sql.ErrNoRows) {
+				plaidTransaction.ItemID = item.ItemID
+				plaidTransaction.DateTime.SetValid(plaidTransaction.Date)
+			}
 
-			_, err := s.CreateTransaction(ctx, plaidTransaction)
-			if err != nil {
-				entry.WithError(err).Error()
-				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
+			if err == nil && len(transactions) > 0 {
+				sort.SliceStable(transactions, func(i, j int) bool {
+					return transactions[i].DateTime.Time.Unix() < transactions[j].DateTime.Time.Unix()
+				})
+
+			}
+
+			// if err != nil && errors.Is(err, sql.ErrNoRows) {
+			// 	entry.WithError(err).Error()
+			// 	return fmt.Errorf("failed to fetch transactions from DB")
+			// }
+
+			// if no transactions for this date came back, they
+			if len(transactions) == 0 {
+				plaidTransaction.ItemID = item.ItemID
+
+				_, err := s.CreateTransaction(ctx, plaidTransaction)
+				if err != nil {
+					entry.WithError(err).Error()
+					return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
+				}
+
 			}
 
 			sleep()
