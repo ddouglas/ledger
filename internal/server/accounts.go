@@ -56,14 +56,14 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 		filters.FromTransactionID = &ledger.StringFilter{String: fromTransactionID, Operation: ledger.LtOperation}
 	}
 	if limit != "" {
-		parsedCount, err := strconv.ParseUint(limit, 10, 64)
+		parsedLimit, err := strconv.ParseUint(limit, 10, 64)
 		if err != nil {
 			GetLogEntry(r).WithError(err).Error()
 			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in limit query param to valid uint64"))
 			return
 		}
 
-		filters.Count = null.Uint64From(parsedCount)
+		filters.Limit = null.Uint64From(parsedLimit)
 	}
 	var results = new(ledger.PaginatedTransactions)
 
@@ -85,7 +85,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 	results.Total = count
 
-	s.writeResponse(ctx, w, http.StatusOK, transactions)
+	s.writeResponse(ctx, w, http.StatusOK, results)
 
 }
 

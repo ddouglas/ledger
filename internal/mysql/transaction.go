@@ -104,7 +104,7 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 			"item_id":    itemID,
 			"account_id": accountID,
 		}).
-		OrderBy("date desc", "pending desc")
+		OrderBy("datetime desc")
 	if filters != nil {
 		if filters.FromTransactionID != nil {
 			// https://github.com/Masterminds/squirrel/issues/258#issuecomment-673315028
@@ -131,8 +131,8 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 }
 
 func transactionIDSubQuery(transactionID string) squirrel.Sqlizer {
-	sql, args, _ := sq.Select("date").From(transactionsTableName).Where(sq.Eq{"transaction_id": transactionID}).ToSql()
-	return sq.Expr(fmt.Sprintf("date <= (%s)", sql), args...)
+	sql, args, _ := sq.Select("datetime").From(transactionsTableName).Where(sq.Eq{"transaction_id": transactionID}).ToSql()
+	return sq.Expr(fmt.Sprintf("datetime < (%s)", sql), args...)
 }
 
 func (r *transactionRepository) TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*ledger.Transaction, error) {

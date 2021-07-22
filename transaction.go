@@ -24,7 +24,7 @@ type TransactionRepository interface {
 
 type PaginatedTransactions struct {
 	Transactions []*Transaction `json:"transactions"`
-	Count        uint           `json:"count"`
+	Total        uint64         `json:"total"`
 }
 
 type Transaction struct {
