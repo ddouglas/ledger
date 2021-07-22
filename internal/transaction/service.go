@@ -49,7 +49,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 			entry.Info("new transaction detected, fetching records for date")
 
-			transactions, err := s.TransactionsByDate(ctx, item.ItemID, transaction.Date)
+			transactions, err := s.TransactionsByDate(ctx, item.ItemID, plaidTransaction.Date)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				entry.WithError(err).Error()
 				return fmt.Errorf("failed to fetch transactions from DB")
@@ -59,16 +59,16 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			entry = entry.WithError(err)
 			plaidTransaction.ItemID = item.ItemID
 
-			if err != nil && errors.Is(err, sql.ErrNoRows) {
+			if err != nil && errors.Is(err, sql.ErrNoRows) || len(transactions) == 0 {
 				entry.Info("no records exist for date, set dateTime to date")
 
 				plaidTransaction.DateTime.SetValid(plaidTransaction.Date)
 			}
 
 			if err == nil && len(transactions) > 0 {
-				entry.Info("no records exist for date, set dateTime to date")
+				entry.Info("found transactions, determining next timestamp")
 				sort.SliceStable(transactions, func(i, j int) bool {
-					return transactions[i].DateTime.Time.Unix() < transactions[j].DateTime.Time.Unix()
+					return transactions[i].DateTime.Time.Unix() > transactions[j].DateTime.Time.Unix()
 				})
 
 				firstTransForDate := transactions[0]
@@ -132,7 +132,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 }
 
 func sleep() {
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 15)
 	// time.Sleep(time.Millisecond * 250)
 }
 
