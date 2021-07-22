@@ -3,6 +3,7 @@ package mysql
 import (
 	"context"
 	"fmt"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/ddouglas/ledger"
@@ -57,6 +58,24 @@ func (r *transactionRepository) Transaction(ctx context.Context, itemID, transac
 	err = r.db.GetContext(ctx, transaction, query, args...)
 
 	return transaction, errors.Wrap(err, "[mysql.Transaction]")
+
+}
+
+func (r *transactionRepository) TransactionsByDate(ctx context.Context, itemID, accountID, date time.Time) ([]*ledger.Transaction, error) {
+
+	query, args, err := sq.Select(transactionColumns...).From(tableName).Where(sq.Eq{
+		"item_id":    itemID,
+		"account_id": accountID,
+		"date":       date,
+	}).ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate sql stmt: %w", err)
+	}
+
+	var transactions = make([]*ledger.Transaction, 0)
+	err = r.db.SelectContext(ctx, &transactions, query, args...)
+
+	return transactions, errors.Wrap(err, "[mysql.TransactionsByDate]")
 
 }
 
