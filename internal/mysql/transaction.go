@@ -78,7 +78,7 @@ func (r *transactionRepository) TransactionsByDate(ctx context.Context, itemID s
 
 }
 
-func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
+func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
 
 	stmt := sq.Select(transactionColumns...).
 		From(tableName).
@@ -87,14 +87,18 @@ func (r *transactionRepository) TransactionsByAccountID(ctx context.Context, ite
 			"account_id": accountID,
 		}).
 		OrderBy("date desc", "pending desc")
-	// if filters != nil {
-	// 	if filters.FromIterator != nil {
-	// 		stmt = stmt.Where(filters.FromIterator.ToSql("iterator"))
-	// 	}
-	// 	if filters.Count.Valid {
-	// 		stmt = stmt.Limit(filters.Count.Uint64)
-	// 	}
-	// }
+	if filters != nil {
+		if filters.FromTransactionID != nil {
+			dateQuery, dateArgs, dateErr := sq.Select("date").From(tableName).Where(sq.Eq{"transaction_id": filters.FromTransactionID.String}).ToSql()
+			if dateErr == nil {
+				stmt.Where(sq.LtOrEq{"date": dateQuery})
+			}
+			// stmt = stmt.Where(filters.FromIterator.ToSql("iterator"))
+		}
+		if filters.Count.Valid {
+			stmt = stmt.Limit(filters.Count.Uint64)
+		}
+	}
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
