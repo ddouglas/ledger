@@ -21,6 +21,11 @@ type TransactionRepository interface {
 	UpdateTransaction(ctx context.Context, transactionID string, transaction *Transaction) (*Transaction, error)
 }
 
+type PaginatedTransactions struct {
+	Transactions []*Transaction `json:"transactions"`
+	Count        uint           `json:"count"`
+}
+
 type Transaction struct {
 	ItemID                 string      `db:"item_id" json:"itemID" diff:"-"`
 	AccountID              string      `db:"account_id" json:"accountID"`
