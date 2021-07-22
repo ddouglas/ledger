@@ -49,11 +49,18 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		transactionMap[transaction.Date.Format(dateFmt)] = append(transactionMap[transaction.Date.Format(dateFmt)], transaction)
 
 	}
-
+	modifiedTransactions := make([]*ledger.Transaction, 0, len(newTrans))
 	for _, transactions := range transactionMap {
 		numTransactions := len(transactions)
 		fmt.Println(numTransactions)
 		for i, transaction := range transactions {
+			if i == 0 {
+				transactions[i].DateTime.SetValid(transactions[i].Date)
+				continue
+			}
+
+			prevTransaction := transactions[i-1]
+			transactions[i].DateTime.SetValid(prevTransaction.DateTime.Time.Add(time.Second))
 			fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, transaction.Date.Format("2006-01-02"), transaction.DateTime.Time.Format("2006-01-02 15:04:05"))
 		}
 
