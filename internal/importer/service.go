@@ -51,7 +51,7 @@ func (s *service) Run() {
 		}
 
 		if err != nil && errors.Is(err, redis.Nil) {
-			entry.Info("received nil, going to sleep")
+			// entry.Info("received nil, going to sleep")
 			txn.Ignore()
 			sleep()
 			continue

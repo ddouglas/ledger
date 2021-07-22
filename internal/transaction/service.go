@@ -3,6 +3,7 @@ package transaction
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -37,6 +38,10 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		return newTrans[i].DateTime.Time.Unix() < newTrans[j].DateTime.Time.Unix()
 
 	})
+
+	for i, tran := range newTrans {
+		fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, tran.Date.Format("2006-01-02"), tran.DateTime.Time.Format("2006-01-02 15:04:05"))
+	}
 
 	// for _, plaidTransaction := range newTrans {
 
