@@ -133,26 +133,6 @@ func sleep() {
 	time.Sleep(time.Millisecond * 250)
 }
 
-func (s *service) TransactionsByAccountID(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.Transaction, error) {
-
-	// if filters != nil && filters.FromTransactionID != nil {
-	// 	// transaction, err := s.Transaction(ctx, itemID, filters.FromTransactionID.String)
-	// 	// if err != nil {
-	// 	// 	s.logger.WithError(err).Errorln()
-	// 	// 	return nil, errors.New("unable to filter on unknown transaction")
-	// 	// }
-
-	// 	// filters.FromIterator, err = ledger.NewNumberFilter(ledger.LtOperation, int64(transaction.Iterator))
-	// 	// if err != nil {
-	// 	// 	return nil, err
-	// 	// }
-	// 	// filters.FromTransactionID = nil
-	// }
-
-	return s.TransactionRepository.TransactionsByAccountID(ctx, itemID, accountID, filters)
-
-}
-
 // func mapTransactionsByTransactionID(trans []*ledger.Transaction) map[string]*ledger.Transaction {
 // 	mapTransactions := make(map[string]*ledger.Transaction)
 // 	for _, tran := range trans {

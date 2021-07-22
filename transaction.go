@@ -14,7 +14,7 @@ import (
 
 type TransactionRepository interface {
 	Transaction(ctx context.Context, itemID, transactionID string) (*Transaction, error)
-	TransactionsByAccountID(ctx context.Context, itemID, accountID string, pagination *TransactionFilter) ([]*Transaction, error)
+	TransactionsPaginated(ctx context.Context, itemID, accountID string, filters *TransactionFilter) ([]*Transaction, error)
 	TransactionsByDate(ctx context.Context, itemID string, date time.Time) ([]*Transaction, error)
 	TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*Transaction, error)
 	CreateTransaction(ctx context.Context, transaction *Transaction) (*Transaction, error)

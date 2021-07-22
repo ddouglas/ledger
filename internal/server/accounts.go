@@ -49,7 +49,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	var filters *ledger.TransactionFilter
+	var filters = new(ledger.TransactionFilter)
 	fromTransactionID := r.URL.Query().Get("fromTransactionID")
 	count := r.URL.Query().Get("count")
 	if fromTransactionID != "" && count != "" {
@@ -67,7 +67,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	transactions, err := s.transaction.TransactionsByAccountID(ctx, itemID, accountID, filters)
+	transactions, err := s.transaction.TransactionsPaginated(ctx, itemID, accountID, filters)
 	if err != nil {
 		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))

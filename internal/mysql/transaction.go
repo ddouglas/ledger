@@ -6,6 +6,7 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -89,11 +90,8 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 		OrderBy("date desc", "pending desc")
 	if filters != nil {
 		if filters.FromTransactionID != nil {
-			dateQuery, dateArgs, dateErr := sq.Select("date").From(tableName).Where(sq.Eq{"transaction_id": filters.FromTransactionID.String}).ToSql()
-			if dateErr == nil {
-				stmt.Where(sq.LtOrEq{"date": dateQuery})
-			}
-			// stmt = stmt.Where(filters.FromIterator.ToSql("iterator"))
+			subStmt := sq.Select("date").From(tableName).Where(sq.Eq{"transaction_id": filters.FromTransactionID.String})
+			stmt = stmt.Where(sq.LtOrEq{"date": subStmt})
 		}
 		if filters.Count.Valid {
 			stmt = stmt.Limit(filters.Count.Uint64)
@@ -102,11 +100,14 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return nil, errors.Wrap(err, "[mysql.TransactionsByAccountID]")
+		return nil, errors.Wrap(err, "[mysql.TransactionsPaginated]")
 	}
 
+	fmt.Println(query)
+	spew.Dump(args...)
+
 	var transactions = make([]*ledger.Transaction, 0)
-	err = r.db.SelectContext(ctx, &transactions, query, args...)
+	// err = r.db.SelectContext(ctx, &transactions, query, args...)
 
 	return transactions, errors.Wrap(err, "[mysql.TransactionsByAccountID]")
 
