@@ -38,9 +38,28 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 	// })
 
-	for i, tran := range newTrans {
-		fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, tran.Date.Format("2006-01-02"), tran.DateTime.Time.Format("2006-01-02 15:04:05"))
+	transactionMap := make(map[string][]*ledger.Transaction)
+	const dateFmt = "2006-01-02"
+	for _, transaction := range newTrans {
+
+		if _, ok := transactionMap[transaction.Date.Format(dateFmt)]; !ok {
+			transactionMap[dateFmt] = make([]*ledger.Transaction, 0, 10)
+		}
+
+		transactionMap[dateFmt] = append(transactionMap[dateFmt], transaction)
+
 	}
+
+	for _, transactions := range transactionMap {
+		numTransactions := len(transactions)
+
+		fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, tran.Date.Format("2006-01-02"), tran.DateTime.Time.Format("2006-01-02 15:04:05"))
+
+	}
+
+	// for i, tran := range newTrans {
+	// 	fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, tran.Date.Format("2006-01-02"), tran.DateTime.Time.Format("2006-01-02 15:04:05"))
+	// }
 
 	// for _, plaidTransaction := range newTrans {
 
