@@ -47,7 +47,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 		if errors.Is(err, sql.ErrNoRows) {
 
-			entry.Info("new transaction detected, fetching records for date")
+			entry.Debug("new transaction detected, fetching records for date")
 
 			transactions, err := s.TransactionsByDate(ctx, item.ItemID, plaidTransaction.Date)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -60,13 +60,15 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			plaidTransaction.ItemID = item.ItemID
 
 			if err != nil && errors.Is(err, sql.ErrNoRows) || len(transactions) == 0 {
-				entry.Info("no records exist for date, set dateTime to date")
-
+				entry.WithFields(logrus.Fields{
+					"dateTime":       plaidTransaction.Date,
+					"transaction_id": plaidTransaction.TransactionID,
+				}).Debug("no records exist for date, set dateTime to date")
 				plaidTransaction.DateTime.SetValid(plaidTransaction.Date)
 			}
 
 			if err == nil && len(transactions) > 0 {
-				entry.Info("found transactions, determining next timestamp")
+				entry.Debug("found transactions, determining next timestamp")
 				sort.SliceStable(transactions, func(i, j int) bool {
 					return transactions[i].DateTime.Time.Unix() > transactions[j].DateTime.Time.Unix()
 				})
@@ -74,7 +76,10 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				firstTransForDate := transactions[0]
 				nextTransDatetime := firstTransForDate.DateTime.Time.Add(time.Second)
 				plaidTransaction.DateTime.SetValid(nextTransDatetime)
-				entry.WithField("dateTime", nextTransDatetime).WithField("transaction_id", plaidTransaction.TransactionID).Info("setting transaction datetime")
+				entry.WithFields(logrus.Fields{
+					"dateTime":       nextTransDatetime,
+					"transaction_id": plaidTransaction.TransactionID,
+				}).Debug("setting transaction datetime")
 			}
 
 			_, err = s.CreateTransaction(ctx, plaidTransaction)
@@ -83,7 +88,6 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
 			}
 			entry.Info("transaction created successfully")
-			// sleep()
 			continue
 
 		}
@@ -92,7 +96,6 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 		if !transaction.Pending {
 			entry.Info("transactions is not pending, skipping")
-			// sleep()
 			continue
 		}
 
@@ -104,8 +107,6 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 		if len(changelog) == 0 {
 			entry.Info("diff between plaidTransaction and transaction is 0, skipping update")
-
-			// sleep()
 			continue
 		}
 
@@ -122,9 +123,6 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			entry.WithError(err).Error()
 			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
 		}
-
-		// sleep()
-
 	}
 
 	return nil

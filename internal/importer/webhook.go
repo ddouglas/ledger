@@ -76,7 +76,7 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *Webh
 		return errors.New("startDate and endDate must be at least 24 hours apart")
 	}
 
-	if webhook.EndDate.Unix()-webhook.StartDate.Unix() > (oneHourSec * 24 * 30 * 6) {
+	if webhook.EndDate.Unix()-webhook.StartDate.Unix() > (oneHourSec * 24 * 30 * 12) {
 		return errors.New("startDate and endDate cannot be more than 6 months apart")
 	}
 
