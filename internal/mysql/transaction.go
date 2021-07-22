@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
@@ -91,11 +92,7 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 	if filters != nil {
 		if filters.FromTransactionID != nil {
 			// https://github.com/Masterminds/squirrel/issues/258#issuecomment-673315028
-
-			subStmt, subArgs, _ := sq.Select("date").From(tableName).Where(sq.Eq{"transaction_id": filters.FromTransactionID.String}).ToSql()
-			fmt.Println("Sub TransactionID Query", subStmt)
-			spew.Dump(subArgs...)
-			stmt = stmt.Where(sq.LtOrEq{"date": subStmt}, subArgs...)
+			stmt = stmt.Where(transactionIDSubQuery(filters.FromTransactionID.String))
 		}
 		if filters.Count.Valid {
 			stmt = stmt.Limit(filters.Count.Uint64)
@@ -111,10 +108,15 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 	spew.Dump(args...)
 
 	var transactions = make([]*ledger.Transaction, 0)
-	// err = r.db.SelectContext(ctx, &transactions, query, args...)
+	err = r.db.SelectContext(ctx, &transactions, query, args...)
 
-	return transactions, errors.Wrap(err, "[mysql.TransactionsByAccountID]")
+	return transactions, errors.Wrap(err, "[mysql.TransactionsPaginated]")
 
+}
+
+func transactionIDSubQuery(transactionID string) squirrel.Sqlizer {
+	sql, args, _ := sq.Select("date").From(tableName).Where(sq.Eq{"transaction_id": transactionID}).ToSql()
+	return sq.Expr(fmt.Sprintf("date <= (%s)", sql), args...)
 }
 
 func (r *transactionRepository) TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*ledger.Transaction, error) {
