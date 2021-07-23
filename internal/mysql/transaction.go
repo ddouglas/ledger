@@ -113,6 +113,9 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 		if filters.Limit.Valid {
 			stmt = stmt.Limit(filters.Limit.Uint64)
 		}
+		if filters.FromDate.Valid {
+			stmt = stmt.Where(sq.Lt{"date": filters.FromDate.Time.Format("2006-01-02")})
+		}
 	}
 
 	query, args, err := stmt.ToSql()

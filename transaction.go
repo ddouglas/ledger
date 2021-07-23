@@ -58,7 +58,8 @@ type Transaction struct {
 type TransactionFilter struct {
 	FromTransactionID null.String
 	Limit             null.Uint64
-	FromDate          null.Time
+	StartDate         null.Time
+	EndDate           null.Time
 }
 
 func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {

@@ -3,9 +3,10 @@ package importer
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/go-redis/redis/v8"

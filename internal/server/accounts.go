@@ -68,17 +68,45 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 		filters.Limit = null.Uint64From(parsedLimit)
 	}
 
-	fromDate := r.URL.Query().Get("fromDate")
-	if fromDate != "" {
+	startDate := r.URL.Query().Get("startDate")
+	if startDate != "" {
 
-		parsedDate, err := time.Parse("2006-01-02", fromDate)
+		parsedDate, err := time.Parse("2006-01-02", startDate)
 		if err != nil {
 			GetLogEntry(r).WithError(err).Error()
-			s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in fromDate query param to valid time"))
+			s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in startDate query param to valid time"))
 			return
 		}
 
-		filters.FromDate = null.NewTime(parsedDate, true)
+		filters.StartDate = null.NewTime(parsedDate, true)
+
+	}
+
+	endDate := r.URL.Query().Get("endDate")
+	if endDate != "" {
+
+		parsedDate, err := time.Parse("2006-01-02", endDate)
+		if err != nil {
+			GetLogEntry(r).WithError(err).Error()
+			s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in endDate query param to valid time"))
+			return
+		}
+
+		filters.EndDate = null.NewTime(parsedDate, true)
+
+	}
+
+	dateInclusive := r.URL.Query().Get("dateInclusive")
+	if dateInclusive != "" {
+
+		parsedBool, err := strconv.ParseBool(dateInclusive)
+		if err != nil {
+			GetLogEntry(r).WithError(err).Error()
+			s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in dateInclusive query param to valid boolean"))
+			return
+		}
+
+		filters.DateInclusive = null.NewTime(parsedBool, true)
 
 	}
 

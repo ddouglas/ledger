@@ -3,8 +3,9 @@ package user
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
+
+	"github.com/pkg/errors"
 
 	"github.com/ddouglas/ledger"
 	"github.com/gofrs/uuid"

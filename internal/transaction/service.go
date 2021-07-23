@@ -4,10 +4,11 @@ package transaction
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/ddouglas/ledger"
 	"github.com/r3labs/diff"
@@ -129,9 +130,9 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 }
 
-func sleep() {
-	time.Sleep(time.Millisecond * 250)
-}
+// func sleep() {
+// 	time.Sleep(time.Millisecond * 250)
+// }
 
 // func mapTransactionsByTransactionID(trans []*ledger.Transaction) map[string]*ledger.Transaction {
 // 	mapTransactions := make(map[string]*ledger.Transaction)
