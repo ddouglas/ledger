@@ -3,7 +3,6 @@ package mysql
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/Masterminds/squirrel"
 	sq "github.com/Masterminds/squirrel"
@@ -11,6 +10,7 @@ import (
 	"github.com/ddouglas/ledger"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"github.com/volatiletech/null"
 )
 
 type transactionRepository struct {
@@ -63,23 +63,6 @@ func (r *transactionRepository) Transaction(ctx context.Context, itemID, transac
 
 }
 
-func (r *transactionRepository) TransactionsByDate(ctx context.Context, itemID string, date time.Time) ([]*ledger.Transaction, error) {
-
-	query, args, err := sq.Select(transactionColumns...).From(transactionsTableName).Where(sq.Eq{
-		"item_id": itemID,
-		"date":    date.Format("2006-01-02"),
-	}).ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate sql stmt: %w", err)
-	}
-
-	var transactions = make([]*ledger.Transaction, 0)
-	err = r.db.SelectContext(ctx, &transactions, query, args...)
-
-	return transactions, errors.Wrap(err, "[mysql.TransactionsByDate]")
-
-}
-
 func (r *transactionRepository) TransactionsCount(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) (uint64, error) {
 
 	var count uint64
@@ -87,7 +70,11 @@ func (r *transactionRepository) TransactionsCount(ctx context.Context, itemID, a
 		"item_id":    itemID,
 		"account_id": accountID,
 	})
-	stmt = transactionsQueryBuilder(stmt, filters)
+	xfilters := *filters
+	if xfilters.Limit.Valid {
+		xfilters.Limit = null.NewUint64(0, false)
+	}
+	stmt = transactionsQueryBuilder(stmt, &xfilters)
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
@@ -148,6 +135,9 @@ func transactionsQueryBuilder(stmt sq.SelectBuilder, filters *ledger.Transaction
 				op = sq.GtOrEq(endDate)
 			}
 			stmt = stmt.Where(op)
+		}
+		if filters.OnDate.Valid {
+			stmt = stmt.Where(sq.Eq{"date": filters.OnDate.Time})
 		}
 	}
 

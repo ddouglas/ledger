@@ -121,7 +121,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 	results.Transactions = transactions
 
-	count, err := s.transaction.TransactionsCount(ctx, itemID, accountID)
+	count, err := s.transaction.TransactionsCount(ctx, itemID, accountID, filters)
 	if err != nil {
 		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))

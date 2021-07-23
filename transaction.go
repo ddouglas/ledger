@@ -14,9 +14,8 @@ import (
 
 type TransactionRepository interface {
 	Transaction(ctx context.Context, itemID, transactionID string) (*Transaction, error)
-	TransactionsCount(ctx context.Context, itemID, accountID string) (uint64, error)
+	TransactionsCount(ctx context.Context, itemID, accountID string, filters *TransactionFilter) (uint64, error)
 	TransactionsPaginated(ctx context.Context, itemID, accountID string, filters *TransactionFilter) ([]*Transaction, error)
-	TransactionsByDate(ctx context.Context, itemID string, date time.Time) ([]*Transaction, error)
 	TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*Transaction, error)
 	CreateTransaction(ctx context.Context, transaction *Transaction) (*Transaction, error)
 	UpdateTransaction(ctx context.Context, transactionID string, transaction *Transaction) (*Transaction, error)
@@ -60,6 +59,7 @@ type TransactionFilter struct {
 	Limit             null.Uint64
 	StartDate         null.Time
 	EndDate           null.Time
+	OnDate            null.Time
 	DateInclusive     null.Bool
 }
 

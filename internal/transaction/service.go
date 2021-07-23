@@ -49,8 +49,8 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		if errors.Is(err, sql.ErrNoRows) {
 
 			entry.Debug("new transaction detected, fetching records for date")
-
-			transactions, err := s.TransactionsByDate(ctx, item.ItemID, plaidTransaction.Date)
+			var transactions []*ledger.Transaction
+			// transactions, err := s.TransactionsByDate(ctx, item.ItemID, plaidTransaction.Date)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				entry.WithError(err).Error()
 				return fmt.Errorf("failed to fetch transactions from DB")
