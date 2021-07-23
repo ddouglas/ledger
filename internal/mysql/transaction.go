@@ -80,13 +80,16 @@ func (r *transactionRepository) TransactionsByDate(ctx context.Context, itemID s
 
 }
 
-func (r *transactionRepository) TransactionsCount(ctx context.Context, itemID, accountID string) (uint64, error) {
+func (r *transactionRepository) TransactionsCount(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) (uint64, error) {
 
 	var count uint64
-	query, args, err := sq.Select(`COUNT(*)`).From(transactionsTableName).Where(sq.Eq{
+	stmt := sq.Select(`COUNT(*)`).From(transactionsTableName).Where(sq.Eq{
 		"item_id":    itemID,
 		"account_id": accountID,
-	}).ToSql()
+	})
+	stmt = transactionsQueryBuilder(stmt, filters)
+
+	query, args, err := stmt.ToSql()
 	if err != nil {
 		return 0, errors.Wrap(err, "[mysql.TransactionsPaginated]")
 	}
@@ -105,19 +108,7 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 			"account_id": accountID,
 		}).
 		OrderBy("datetime desc")
-	if filters != nil {
-		if filters.FromTransactionID.Valid {
-			// https://github.com/Masterminds/squirrel/issues/258#issuecomment-673315028
-			stmt = stmt.Where(transactionIDSubQuery(filters.FromTransactionID.String))
-		}
-		if filters.Limit.Valid {
-			stmt = stmt.Limit(filters.Limit.Uint64)
-		}
-		if filters.FromDate.Valid {
-			stmt = stmt.Where(sq.Lt{"date": filters.FromDate.Time.Format("2006-01-02")})
-		}
-	}
-
+	stmt = transactionsQueryBuilder(stmt, filters)
 	query, args, err := stmt.ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[mysql.TransactionsPaginated]")
@@ -131,6 +122,36 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 
 	return transactions, errors.Wrap(err, "[mysql.TransactionsPaginated]")
 
+}
+
+func transactionsQueryBuilder(stmt sq.SelectBuilder, filters *ledger.TransactionFilter) sq.SelectBuilder {
+	if filters != nil {
+		if filters.FromTransactionID.Valid {
+			// https://github.com/Masterminds/squirrel/issues/258#issuecomment-673315028
+			stmt = stmt.Where(transactionIDSubQuery(filters.FromTransactionID.String))
+		}
+		if filters.Limit.Valid {
+			stmt = stmt.Limit(filters.Limit.Uint64)
+		}
+		if filters.EndDate.Valid {
+			endDate := map[string]interface{}{"date": filters.EndDate.Time.Format("2006-01-02")}
+			var op sq.Sqlizer = sq.Lt(endDate)
+			if filters.DateInclusive.Valid && filters.DateInclusive.Bool {
+				op = sq.LtOrEq(endDate)
+			}
+			stmt = stmt.Where(op)
+		}
+		if filters.StartDate.Valid {
+			endDate := map[string]interface{}{"date": filters.StartDate.Time.Format("2006-01-02")}
+			var op sq.Sqlizer = sq.Gt(endDate)
+			if filters.DateInclusive.Valid && filters.DateInclusive.Bool {
+				op = sq.GtOrEq(endDate)
+			}
+			stmt = stmt.Where(op)
+		}
+	}
+
+	return stmt
 }
 
 func transactionIDSubQuery(transactionID string) squirrel.Sqlizer {

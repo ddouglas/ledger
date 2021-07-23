@@ -60,6 +60,7 @@ type TransactionFilter struct {
 	Limit             null.Uint64
 	StartDate         null.Time
 	EndDate           null.Time
+	DateInclusive     null.Bool
 }
 
 func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {

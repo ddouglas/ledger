@@ -106,7 +106,7 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 			return
 		}
 
-		filters.DateInclusive = null.NewTime(parsedBool, true)
+		filters.DateInclusive = null.NewBool(parsedBool, true)
 
 	}
 
