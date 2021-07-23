@@ -5,6 +5,8 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -61,6 +63,70 @@ type TransactionFilter struct {
 	EndDate           null.Time
 	OnDate            null.Time
 	DateInclusive     null.Bool
+}
+
+func (f *TransactionFilter) BuildFromURLValues(values url.Values) error {
+	fromTransactionID := values.Get("fromTransactionID")
+	if fromTransactionID != "" {
+		f.FromTransactionID = null.NewString(fromTransactionID, true)
+	}
+
+	limit := values.Get("limit")
+	if limit != "" {
+		parsedLimit, err := strconv.ParseUint(limit, 10, 64)
+		if err != nil {
+
+			// GetLogEntry(r).WithError(err).Error()
+			// s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in limit query param to valid uint64"))
+			return err
+		}
+
+		f.Limit = null.Uint64From(parsedLimit)
+	}
+
+	startDate := values.Get("startDate")
+	if startDate != "" {
+
+		parsedDate, err := time.Parse("2006-01-02", startDate)
+		if err != nil {
+			// GetLogEntry(r).WithError(err).Error()
+			// s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in startDate query param to valid time"))
+			return err
+		}
+
+		f.StartDate = null.NewTime(parsedDate, true)
+
+	}
+
+	endDate := values.Get("endDate")
+	if endDate != "" {
+
+		parsedDate, err := time.Parse("2006-01-02", endDate)
+		if err != nil {
+			// GetLogEntry(r).WithError(err).Error()
+			// s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in endDate query param to valid time"))
+			return err
+		}
+
+		f.EndDate = null.NewTime(parsedDate, true)
+
+	}
+
+	dateInclusive := values.Get("dateInclusive")
+	if dateInclusive != "" {
+
+		parsedBool, err := strconv.ParseBool(dateInclusive)
+		if err != nil {
+			// GetLogEntry(r).WithError(err).Error()
+			// s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in dateInclusive query param to valid boolean"))
+			return err
+		}
+
+		f.DateInclusive = null.NewBool(parsedBool, true)
+
+	}
+
+	return nil
 }
 
 func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {

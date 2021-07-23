@@ -3,15 +3,12 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
 	"github.com/ddouglas/ledger/internal/importer"
 	"github.com/go-chi/chi/v5"
 	"github.com/pkg/errors"
-	"github.com/volatiletech/null"
 )
 
 func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Request) {
@@ -51,84 +48,28 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 	}
 
 	var filters = new(ledger.TransactionFilter)
-	fromTransactionID := r.URL.Query().Get("fromTransactionID")
-	if fromTransactionID != "" {
-		filters.FromTransactionID = null.NewString(fromTransactionID, true)
-	}
-
-	limit := r.URL.Query().Get("limit")
-	if limit != "" {
-		parsedLimit, err := strconv.ParseUint(limit, 10, 64)
-		if err != nil {
-			GetLogEntry(r).WithError(err).Error()
-			s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in limit query param to valid uint64"))
-			return
-		}
-
-		filters.Limit = null.Uint64From(parsedLimit)
-	}
-
-	startDate := r.URL.Query().Get("startDate")
-	if startDate != "" {
-
-		parsedDate, err := time.Parse("2006-01-02", startDate)
-		if err != nil {
-			GetLogEntry(r).WithError(err).Error()
-			s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in startDate query param to valid time"))
-			return
-		}
-
-		filters.StartDate = null.NewTime(parsedDate, true)
-
-	}
-
-	endDate := r.URL.Query().Get("endDate")
-	if endDate != "" {
-
-		parsedDate, err := time.Parse("2006-01-02", endDate)
-		if err != nil {
-			GetLogEntry(r).WithError(err).Error()
-			s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in endDate query param to valid time"))
-			return
-		}
-
-		filters.EndDate = null.NewTime(parsedDate, true)
-
-	}
-
-	dateInclusive := r.URL.Query().Get("dateInclusive")
-	if dateInclusive != "" {
-
-		parsedBool, err := strconv.ParseBool(dateInclusive)
-		if err != nil {
-			GetLogEntry(r).WithError(err).Error()
-			s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in dateInclusive query param to valid boolean"))
-			return
-		}
-
-		filters.DateInclusive = null.NewBool(parsedBool, true)
-
+	err = filters.BuildFromURLValues(r.URL.Query())
+	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, err)
+		return
 	}
 
 	var results = new(ledger.PaginatedTransactions)
 
-	transactions, err := s.transaction.TransactionsPaginated(ctx, itemID, accountID, filters)
+	results.Transactions, err = s.transaction.TransactionsPaginated(ctx, itemID, accountID, filters)
 	if err != nil {
 		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))
 		return
 	}
 
-	results.Transactions = transactions
-
-	count, err := s.transaction.TransactionsCount(ctx, itemID, accountID, filters)
+	results.Total, err = s.transaction.TransactionsCount(ctx, itemID, accountID, filters)
 	if err != nil {
 		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))
 		return
 	}
-
-	results.Total = count
 
 	s.writeResponse(ctx, w, http.StatusOK, results)
 

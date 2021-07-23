@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/volatiletech/null"
 
 	"github.com/ddouglas/ledger"
 	"github.com/r3labs/diff"
@@ -49,8 +50,10 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		if errors.Is(err, sql.ErrNoRows) {
 
 			entry.Debug("new transaction detected, fetching records for date")
-			var transactions []*ledger.Transaction
-			// transactions, err := s.TransactionsByDate(ctx, item.ItemID, plaidTransaction.Date)
+			filters := &ledger.TransactionFilter{
+				OnDate: null.NewTime(plaidTransaction.Date, true),
+			}
+			transactions, err := s.TransactionsPaginated(ctx, item.ItemID, plaidTransaction.AccountID, filters)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				entry.WithError(err).Error()
 				return fmt.Errorf("failed to fetch transactions from DB")
