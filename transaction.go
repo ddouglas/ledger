@@ -59,8 +59,9 @@ type Transaction struct {
 }
 
 type TransactionCategory struct {
-	Category SliceString `db:"category" json:"category"`
-	Count    uint        `db:"count" json:"count"`
+	CategoryID string      `db:"category_id" json:"categoryID"`
+	Category   SliceString `db:"category" json:"category"`
+	Count      uint        `db:"count" json:"count"`
 }
 
 type TransactionFilter struct {
