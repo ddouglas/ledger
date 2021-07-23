@@ -2,14 +2,15 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
 	"github.com/ddouglas/ledger/internal/importer"
 	"github.com/go-chi/chi/v5"
+	"github.com/pkg/errors"
 	"github.com/volatiletech/null"
 )
 
@@ -51,10 +52,11 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 	var filters = new(ledger.TransactionFilter)
 	fromTransactionID := r.URL.Query().Get("fromTransactionID")
-	limit := r.URL.Query().Get("limit")
 	if fromTransactionID != "" {
-		filters.FromTransactionID = &ledger.StringFilter{String: fromTransactionID, Operation: ledger.LtOperation}
+		filters.FromTransactionID = null.NewString(fromTransactionID, true)
 	}
+
+	limit := r.URL.Query().Get("limit")
 	if limit != "" {
 		parsedLimit, err := strconv.ParseUint(limit, 10, 64)
 		if err != nil {
@@ -65,6 +67,21 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 
 		filters.Limit = null.Uint64From(parsedLimit)
 	}
+
+	fromDate := r.URL.Query().Get("fromDate")
+	if fromDate != "" {
+
+		parsedDate, err := time.Parse("2006-01-02", fromDate)
+		if err != nil {
+			GetLogEntry(r).WithError(err).Error()
+			s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in fromDate query param to valid time"))
+			return
+		}
+
+		filters.FromDate = null.NewTime(parsedDate, true)
+
+	}
+
 	var results = new(ledger.PaginatedTransactions)
 
 	transactions, err := s.transaction.TransactionsPaginated(ctx, itemID, accountID, filters)

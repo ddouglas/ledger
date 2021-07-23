@@ -56,9 +56,9 @@ type Transaction struct {
 }
 
 type TransactionFilter struct {
-	FromTransactionID *StringFilter
-	FromIterator      *NumberFilter
+	FromTransactionID null.String
 	Limit             null.Uint64
+	FromDate          null.Time
 }
 
 func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {

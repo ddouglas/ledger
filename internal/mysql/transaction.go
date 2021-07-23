@@ -106,7 +106,7 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 		}).
 		OrderBy("datetime desc")
 	if filters != nil {
-		if filters.FromTransactionID != nil {
+		if filters.FromTransactionID.Valid {
 			// https://github.com/Masterminds/squirrel/issues/258#issuecomment-673315028
 			stmt = stmt.Where(transactionIDSubQuery(filters.FromTransactionID.String))
 		}
