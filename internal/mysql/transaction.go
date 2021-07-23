@@ -139,10 +139,13 @@ func transactionsQueryBuilder(stmt sq.SelectBuilder, filters *ledger.Transaction
 		if filters.OnDate.Valid {
 			stmt = stmt.Where(sq.Eq{"date": filters.OnDate.Time})
 		}
+		if filters.AmountDir.Valid {
+			// if filters
+		}
 	}
 
 	// Never fetch hidden transactions
-	stmt = stmt.Where(sq.NotEq{"hidden_at": nil}).Where(sq.Eq{"deleted_at": nil})
+	stmt = stmt.Where(sq.Eq{"hidden_at": nil}).Where(sq.Eq{"deleted_at": nil})
 
 	return stmt
 }

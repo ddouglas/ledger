@@ -63,6 +63,7 @@ type TransactionFilter struct {
 	EndDate           null.Time
 	OnDate            null.Time
 	DateInclusive     null.Bool
+	AmountDir         null.Float64
 }
 
 func (f *TransactionFilter) BuildFromURLValues(values url.Values) error {
@@ -125,6 +126,16 @@ func (f *TransactionFilter) BuildFromURLValues(values url.Values) error {
 		}
 
 		f.OnDate = null.NewTime(parsedDate, true)
+	}
+
+	transactionType := values.Get("transactionType")
+	if transactionType != "" {
+		if transactionType == "expenses" {
+			f.AmountDir = null.NewFloat64(-1, true)
+		}
+		if transactionType == "income" {
+			f.AmountDir = null.NewFloat64(1, true)
+		}
 	}
 
 	return nil
