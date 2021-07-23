@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/newrelic/go-agent/v3/integrations/logcontext/nrlogrusplugin"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
@@ -16,7 +17,7 @@ import (
 
 func buildLogger() {
 
-	now := time.Now().Unix()
+	now := time.Now().Format("2006-01-02-15")
 
 	level, err := logrus.ParseLevel(cfg.Log.Level)
 	if err != nil {
@@ -34,7 +35,7 @@ func buildLogger() {
 
 	logger.AddHook(&writerHook{
 		Writer: &lumberjack.Logger{
-			Filename: fmt.Sprintf("logs/%d-error.log", now),
+			Filename: fmt.Sprintf("logs/%s-error.log", now),
 			MaxSize:  10,
 			Compress: false,
 		},
@@ -48,7 +49,7 @@ func buildLogger() {
 
 	logger.AddHook(&writerHook{
 		Writer: &lumberjack.Logger{
-			Filename:   fmt.Sprintf("logs/%d-info.log", now),
+			Filename:   fmt.Sprintf("logs/%s-info.log", now),
 			MaxBackups: 3,
 			MaxSize:    10,
 			Compress:   false,
@@ -103,6 +104,9 @@ func (w *writerHook) Fire(entry *logrus.Entry) error {
 		txn.NoticeError(nre)
 
 	}
+
+	entry = entry.WithField("process", process)
+	spew.Dump(entry.Data)
 
 	line, err := entry.String()
 	if err != nil {

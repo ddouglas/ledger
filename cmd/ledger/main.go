@@ -33,8 +33,9 @@ import (
 )
 
 var (
-	cfg    *config
-	logger *logrus.Logger
+	cfg     *config
+	logger  *logrus.Logger
+	process string
 )
 
 type core struct {
@@ -206,6 +207,8 @@ func buildGateway() gateway.Service {
 
 func actionAPI(c *cli.Context) error {
 
+	process = "api"
+
 	core := buildCore()
 	client := &http.Client{
 		Transport: newrelic.NewRoundTripper(nil),
@@ -298,6 +301,8 @@ func actionAPI(c *cli.Context) error {
 }
 
 func actionImporter(c *cli.Context) error {
+
+	process = "importer"
 
 	core := buildCore()
 
