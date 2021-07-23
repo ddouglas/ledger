@@ -75,9 +75,6 @@ func (f *TransactionFilter) BuildFromURLValues(values url.Values) error {
 	if limit != "" {
 		parsedLimit, err := strconv.ParseUint(limit, 10, 64)
 		if err != nil {
-
-			// GetLogEntry(r).WithError(err).Error()
-			// s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse value in limit query param to valid uint64"))
 			return err
 		}
 
@@ -89,8 +86,6 @@ func (f *TransactionFilter) BuildFromURLValues(values url.Values) error {
 
 		parsedDate, err := time.Parse("2006-01-02", startDate)
 		if err != nil {
-			// GetLogEntry(r).WithError(err).Error()
-			// s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in startDate query param to valid time"))
 			return err
 		}
 
@@ -103,8 +98,6 @@ func (f *TransactionFilter) BuildFromURLValues(values url.Values) error {
 
 		parsedDate, err := time.Parse("2006-01-02", endDate)
 		if err != nil {
-			// GetLogEntry(r).WithError(err).Error()
-			// s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in endDate query param to valid time"))
 			return err
 		}
 
@@ -117,13 +110,21 @@ func (f *TransactionFilter) BuildFromURLValues(values url.Values) error {
 
 		parsedBool, err := strconv.ParseBool(dateInclusive)
 		if err != nil {
-			// GetLogEntry(r).WithError(err).Error()
-			// s.writeError(ctx, w, http.StatusBadRequest, errors.Wrap(err, "failed to parse value in dateInclusive query param to valid boolean"))
 			return err
 		}
 
 		f.DateInclusive = null.NewBool(parsedBool, true)
 
+	}
+
+	onDate := values.Get("onDate")
+	if onDate != "" {
+		parsedDate, err := time.Parse("2006-01-02", onDate)
+		if err != nil {
+			return err
+		}
+
+		f.OnDate = null.NewTime(parsedDate, true)
 	}
 
 	return nil
