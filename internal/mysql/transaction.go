@@ -140,7 +140,12 @@ func transactionsQueryBuilder(stmt sq.SelectBuilder, filters *ledger.Transaction
 			stmt = stmt.Where(sq.Eq{"date": filters.OnDate.Time})
 		}
 		if filters.AmountDir.Valid {
-			// if filters
+			if filters.AmountDir.Float64 > 0 {
+				stmt = stmt.Where(sq.Gt{"amount": 0})
+			}
+			if filters.AmountDir.Float64 < 0 {
+				stmt = stmt.Where(sq.Lt{"amount": 0})
+			}
 		}
 	}
 
