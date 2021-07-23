@@ -167,5 +167,13 @@ func (s *server) handleGetAccountTransaction(w http.ResponseWriter, r *http.Requ
 	}
 
 	transaction, err := s.transaction.Transaction(ctx, itemID, transactionID)
+	if err != nil {
+
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transaction with provided itemID and transactionID combo"))
+		return
+	}
+
+	s.writeResponse(ctx, w, http.StatusOK, transaction)
 
 }
