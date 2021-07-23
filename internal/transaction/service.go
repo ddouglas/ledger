@@ -49,7 +49,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 		if errors.Is(err, sql.ErrNoRows) {
 
-			entry.Debug("new transaction detected, fetching records for date")
+			entry.Info("new transaction detected, fetching records for date")
 			filters := &ledger.TransactionFilter{
 				OnDate: null.NewTime(plaidTransaction.Date, true),
 			}
@@ -67,12 +67,12 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				entry.WithFields(logrus.Fields{
 					"dateTime":       plaidTransaction.Date,
 					"transaction_id": plaidTransaction.TransactionID,
-				}).Debug("no records exist for date, set dateTime to date")
+				}).Info("no records exist for date, set dateTime to date")
 				plaidTransaction.DateTime.SetValid(plaidTransaction.Date)
 			}
 
 			if err == nil && len(transactions) > 0 {
-				entry.Debug("found transactions, determining next timestamp")
+				entry.Info("found transactions, determining next timestamp")
 				sort.SliceStable(transactions, func(i, j int) bool {
 					return transactions[i].DateTime.Time.Unix() > transactions[j].DateTime.Time.Unix()
 				})
@@ -83,7 +83,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				entry.WithFields(logrus.Fields{
 					"dateTime":       nextTransDatetime,
 					"transaction_id": plaidTransaction.TransactionID,
-				}).Debug("setting transaction datetime")
+				}).Info("setting transaction datetime")
 			}
 
 			_, err = s.CreateTransaction(ctx, plaidTransaction)
