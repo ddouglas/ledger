@@ -56,6 +56,11 @@ type Transaction struct {
 	Location    *TransactionLocation    `json:"location" diff:"-"`
 }
 
+type TransactionCategory struct {
+	Category SliceString `db:"category" json:"category"`
+	Count    uint        `db:"count" json:"count"`
+}
+
 type TransactionFilter struct {
 	FromTransactionID null.String
 	Limit             null.Uint64

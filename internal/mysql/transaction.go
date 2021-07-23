@@ -110,6 +110,16 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 	return transactions, errors.Wrap(err, "[mysql.TransactionsPaginated]")
 
 }
+func (r *transactionRepository) TransactionDistinctCategories(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) {
+
+	stmt := sq.Select(`DISTINCT(categories) as category`, `COUNT(*) as count`).From(transactionsTableName).
+		Where(sq.Eq{
+			"item_id":    itemID,
+			"account_id": accountID,
+		}).
+		OrderBy("datetime desc")
+
+}
 
 func transactionsQueryBuilder(stmt sq.SelectBuilder, filters *ledger.TransactionFilter) sq.SelectBuilder {
 	if filters != nil {
