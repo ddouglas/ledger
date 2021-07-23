@@ -141,6 +141,9 @@ func transactionsQueryBuilder(stmt sq.SelectBuilder, filters *ledger.Transaction
 		}
 	}
 
+	// Never fetch hidden transactions
+	stmt = stmt.Where(sq.NotEq{"hidden_at": nil}).Where(sq.Eq{"deleted_at": nil})
+
 	return stmt
 }
 

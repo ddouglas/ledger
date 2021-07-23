@@ -92,6 +92,31 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
 			}
 			entry.Info("transaction created successfully")
+
+			if plaidTransaction.PendingTransactionID.Valid {
+				entry = entry.WithField("pending_transaction_id", plaidTransaction.PendingTransactionID.String)
+				entry.Info("transaction has pending transaction id associated with it")
+
+				pendingTransaction, err := s.Transaction(ctx, plaidTransaction.ItemID, plaidTransaction.PendingTransactionID.String)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					entry.WithError(err).Error()
+					return fmt.Errorf("unexpected error encountered querying for transactions, please check logs")
+				}
+
+				if err != nil && errors.Is(err, sql.ErrNoRows) {
+					entry.Info("No Transactions found for provided pending transaction id. Skipping")
+					continue
+				}
+
+				pendingTransaction.HiddenAt.SetValid(time.Now())
+				_, err = s.UpdateTransaction(ctx, pendingTransaction.TransactionID, pendingTransaction)
+				if err != nil {
+					entry.WithError(err).Error()
+					return fmt.Errorf("failed to update transaction %s", pendingTransaction.TransactionID)
+				}
+
+			}
+
 			continue
 
 		}
