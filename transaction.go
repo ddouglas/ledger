@@ -18,14 +18,16 @@ type TransactionRepository interface {
 	Transaction(ctx context.Context, itemID, transactionID string) (*Transaction, error)
 	TransactionsCount(ctx context.Context, itemID, accountID string, filters *TransactionFilter) (uint64, error)
 	TransactionsPaginated(ctx context.Context, itemID, accountID string, filters *TransactionFilter) ([]*Transaction, error)
+	TransactionDistinctCategories(ctx context.Context, itemID, accountID string, filters *TransactionFilter) ([]*TransactionCategory, error)
 	TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*Transaction, error)
 	CreateTransaction(ctx context.Context, transaction *Transaction) (*Transaction, error)
 	UpdateTransaction(ctx context.Context, transactionID string, transaction *Transaction) (*Transaction, error)
 }
 
 type PaginatedTransactions struct {
-	Transactions []*Transaction `json:"transactions"`
-	Total        uint64         `json:"total"`
+	Categories   []*TransactionCategory `json:"categories"`
+	Transactions []*Transaction         `json:"transactions"`
+	Total        uint64                 `json:"total"`
 }
 
 type Transaction struct {

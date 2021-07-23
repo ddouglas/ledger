@@ -64,10 +64,17 @@ func (s *server) handleGetAccountTransactions(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	results.Categories, err = s.transaction.TransactionDistinctCategories(ctx, itemID, accountID, filters)
+	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transaction categories"))
+		return
+	}
+
 	results.Total, err = s.transaction.TransactionsCount(ctx, itemID, accountID, filters)
 	if err != nil {
 		GetLogEntry(r).WithError(err).Error()
-		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transactions"))
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch transaction count"))
 		return
 	}
 

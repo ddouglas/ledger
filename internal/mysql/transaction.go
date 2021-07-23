@@ -6,7 +6,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	sq "github.com/Masterminds/squirrel"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -78,11 +77,11 @@ func (r *transactionRepository) TransactionsCount(ctx context.Context, itemID, a
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return 0, errors.Wrap(err, "[mysql.TransactionsPaginated]")
+		return 0, errors.Wrap(err, "[mysql.TransactionsCount]")
 	}
 
 	err = r.db.GetContext(ctx, &count, query, args...)
-	return count, err
+	return count, errors.Wrap(err, "[mysql.TransactionsCount]")
 
 }
 
@@ -101,23 +100,30 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 		return nil, errors.Wrap(err, "[mysql.TransactionsPaginated]")
 	}
 
-	fmt.Println(query)
-	spew.Dump(args...)
-
 	var transactions = make([]*ledger.Transaction, 0)
 	err = r.db.SelectContext(ctx, &transactions, query, args...)
 
 	return transactions, errors.Wrap(err, "[mysql.TransactionsPaginated]")
 
 }
-func (r *transactionRepository) TransactionDistinctCategories(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) {
+func (r *transactionRepository) TransactionDistinctCategories(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.TransactionCategory, error) {
 
 	stmt := sq.Select(`DISTINCT(categories) as category`, `COUNT(*) as count`).From(transactionsTableName).
 		Where(sq.Eq{
 			"item_id":    itemID,
 			"account_id": accountID,
 		}).
-		OrderBy("datetime desc")
+		OrderBy("datetime desc").GroupBy(`categories`)
+	stmt = transactionsQueryBuilder(stmt, filters)
+	query, args, err := stmt.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "[mysql.TransactionDistinctCategories]")
+	}
+
+	var transactions = make([]*ledger.TransactionCategory, 0)
+	err = r.db.SelectContext(ctx, &transactions, query, args...)
+
+	return transactions, errors.Wrap(err, "[mysql.TransactionDistinctCategories]")
 
 }
 
