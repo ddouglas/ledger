@@ -153,6 +153,10 @@ func buildRepositories() *repositories {
 		log.Panicf("[MySQL Connect] Failed to connect to mysql server: %s", err)
 	}
 
+	db.SetConnMaxIdleTime(time.Second * 5)
+	db.SetConnMaxLifetime(time.Second * 30)
+	db.SetMaxOpenConns(100)
+
 	err = db.Ping()
 	if err != nil {
 		log.Panicf("[MySQL Connect] Failed to ping mysql server: %s", err)
