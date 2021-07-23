@@ -133,6 +133,9 @@ func transactionsQueryBuilder(stmt sq.SelectBuilder, filters *ledger.Transaction
 			// https://github.com/Masterminds/squirrel/issues/258#issuecomment-673315028
 			stmt = stmt.Where(transactionIDSubQuery(filters.FromTransactionID.String))
 		}
+		if filters.CategoryID.Valid {
+			stmt = stmt.Where(sq.Eq{"category_id": filters.CategoryID.String})
+		}
 		if filters.Limit.Valid {
 			stmt = stmt.Limit(filters.Limit.Uint64)
 		}

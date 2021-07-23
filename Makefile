@@ -11,7 +11,9 @@ ui:
 # 	source ./frontend/.env && npm --prefix ./frontend run serve
 
 build-backend:
+	go mod tidy
 	go build -o ./.build/ledger ./cmd/ledger
+	clear
 
 server: build-backend
 	./.build/ledger server

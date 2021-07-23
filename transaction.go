@@ -72,9 +72,15 @@ type TransactionFilter struct {
 	OnDate            null.Time
 	DateInclusive     null.Bool
 	AmountDir         null.Float64
+	CategoryID        null.String
 }
 
 func (f *TransactionFilter) BuildFromURLValues(values url.Values) error {
+	categoryID := values.Get("categoryID")
+	if categoryID != "" {
+		f.CategoryID = null.NewString(categoryID, true)
+	}
+
 	fromTransactionID := values.Get("fromTransactionID")
 	if fromTransactionID != "" {
 		f.FromTransactionID = null.NewString(fromTransactionID, true)
