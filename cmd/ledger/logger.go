@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/newrelic/go-agent/v3/integrations/logcontext/nrlogrusplugin"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
@@ -78,6 +77,7 @@ type writerHook struct {
 func (w *writerHook) Fire(entry *logrus.Entry) error {
 
 	data := entry.Data
+
 	message := entry.Message
 
 	var service string
@@ -104,9 +104,6 @@ func (w *writerHook) Fire(entry *logrus.Entry) error {
 		txn.NoticeError(nre)
 
 	}
-
-	entry = entry.WithField("process", process)
-	spew.Dump(entry.Data)
 
 	line, err := entry.String()
 	if err != nil {
