@@ -42,12 +42,13 @@ var (
 )
 
 type core struct {
-	logger   *logrus.Logger
-	redis    *redis.Client
-	newrelic *newrelic.Application
-	repos    *repositories
-	gateway  gateway.Service
-	s3       *s3.Client
+	logger    *logrus.Logger
+	redis     *redis.Client
+	newrelic  *newrelic.Application
+	repos     *repositories
+	gateway   gateway.Service
+	s3        *s3.Client
+	s3Presign *s3.PresignClient
 }
 
 type repositories struct {
@@ -95,17 +96,17 @@ func main() {
 
 func buildCore() *core {
 	return &core{
-		logger:   logger,
-		redis:    buildRedis(),
-		newrelic: buildNewRelic(),
-		repos:    buildRepositories(),
-		gateway:  buildGateway(),
-		s3:       buildS3(),
+		logger:    logger,
+		redis:     buildRedis(),
+		newrelic:  buildNewRelic(),
+		repos:     buildRepositories(),
+		gateway:   buildGateway(),
+		s3:        buildS3(),
+		s3Presign: buildS3Presign(),
 	}
 }
 
-func buildS3() *s3.Client {
-
+func buildAWSConfig() aws.Config {
 	awsConf, err := awsConfig.LoadDefaultConfig(
 		context.TODO(),
 		awsConfig.WithCredentialsProvider(
@@ -128,6 +129,11 @@ func buildS3() *s3.Client {
 	if err != nil {
 		panic(fmt.Sprintf("failed to load aws configuration: %s", err))
 	}
+
+	return awsConf
+}
+
+func buildS3() *s3.Client {
 
 	return s3.NewFromConfig(awsConf)
 }
@@ -377,26 +383,28 @@ func actionImporter(c *cli.Context) error {
 
 func actionS3Upload(c *cli.Context) error {
 
+	var ctx = context.Background()
+
 	core := buildCore()
 
-	file, err := os.Open("example.pdf")
-	if err != nil {
-		core.logger.WithError(err).Fatal("failed to open example file")
-	}
+	// file, err := os.Open("example.pdf")
+	// if err != nil {
+	// 	core.logger.WithError(err).Fatal("failed to open example file")
+	// }
 
-	defer file.Close()
+	// defer file.Close()
 
-	obj := s3.PutObjectInput{
-		Bucket:      aws.String("onetwentyseven"),
-		Key:         aws.String("example.pdf"),
-		Body:        file,
-		ContentType: aws.String("application/pdf"),
-	}
+	// obj := s3.PutObjectInput{
+	// 	Bucket:      aws.String("onetwentyseven"),
+	// 	Key:         aws.String("example.pdf"),
+	// 	Body:        file,
+	// 	ContentType: aws.String("application/pdf"),
+	// }
 
-	_, err = core.s3.PutObject(context.Background(), &obj)
-	if err != nil {
-		core.logger.WithError(err).Fatal("failed to upload file")
-	}
+	// _, err = core.s3.PutObject(context.Background(), &obj)
+	// if err != nil {
+	// 	core.logger.WithError(err).Fatal("failed to upload file")
+	// }
 
 	return nil
 }
