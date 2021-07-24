@@ -47,7 +47,7 @@ type core struct {
 	newrelic *newrelic.Application
 	repos    *repositories
 	gateway  gateway.Service
-	// s3       *s3.S3
+	s3       *s3.Client
 }
 
 type repositories struct {
@@ -80,10 +80,10 @@ func main() {
 			Usage:  "starts the ledger importer, which processes messages from a Redis PubSub and interacts with the gateway service",
 			Action: actionImporter,
 		},
-		// {
-		// 	Name:   "s3",
-		// 	Action: actionS3Upload,
-		// },
+		{
+			Name:   "s3",
+			Action: actionS3Upload,
+		},
 	}
 
 	err := app.Run(os.Args)
@@ -100,11 +100,11 @@ func buildCore() *core {
 		newrelic: buildNewRelic(),
 		repos:    buildRepositories(),
 		gateway:  buildGateway(),
-		// s3:       buildS3(),
+		s3:       buildS3(),
 	}
 }
 
-func buildS3() *s3.S3 {
+func buildS3() *s3.Client {
 
 	awsConf, err := awsConfig.LoadDefaultConfig(
 		context.TODO(),
@@ -129,10 +129,7 @@ func buildS3() *s3.S3 {
 		panic(fmt.Sprintf("failed to load aws configuration: %s", err))
 	}
 
-	s3.NewFromConfig(awsConf)
-
-	// return s3.New(session.New(s3Config))
-
+	return s3.NewFromConfig(awsConf)
 }
 
 func buildNewRelic() *newrelic.Application {
@@ -378,18 +375,18 @@ func actionImporter(c *cli.Context) error {
 
 }
 
-// func actionS3Upload(c *cli.Context) error {
+func actionS3Upload(c *cli.Context) error {
 
-// 	core := buildCore()
+	core := buildCore()
 
-// 	spaces, err := core.s3.ListBuckets(&s3.ListBucketsInput{})
-// 	if err != nil {
-// 		core.logger.WithError(err).Fatal("failed to list buckets")
-// 	}
+	// spaces, err := core.s3.ListBuckets(context.TODO(), &s3.ListBucketsInput{})
+	// if err != nil {
+	// 	core.logger.WithError(err).Fatal("failed to list buckets")
+	// }
 
-// 	for _, b := range spaces.Buckets {
-// 		fmt.Println(aws.StringValue(b.Name))
-// 	}
+	// for _, b := range spaces.Buckets {
+	// 	fmt.Println(aws.ToString(b.Name))
+	// }
 
-// 	return nil
-// }
+	return nil
+}
