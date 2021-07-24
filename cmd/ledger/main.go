@@ -379,14 +379,24 @@ func actionS3Upload(c *cli.Context) error {
 
 	core := buildCore()
 
-	// spaces, err := core.s3.ListBuckets(context.TODO(), &s3.ListBucketsInput{})
-	// if err != nil {
-	// 	core.logger.WithError(err).Fatal("failed to list buckets")
-	// }
+	file, err := os.Open("example.pdf")
+	if err != nil {
+		core.logger.WithError(err).Fatal("failed to open example file")
+	}
 
-	// for _, b := range spaces.Buckets {
-	// 	fmt.Println(aws.ToString(b.Name))
-	// }
+	defer file.Close()
+
+	obj := s3.PutObjectInput{
+		Bucket:      aws.String("onetwentyseven"),
+		Key:         aws.String("example.pdf"),
+		Body:        file,
+		ContentType: aws.String("application/pdf"),
+	}
+
+	_, err = core.s3.PutObject(context.Background(), &obj)
+	if err != nil {
+		core.logger.WithError(err).Fatal("failed to upload file")
+	}
 
 	return nil
 }
