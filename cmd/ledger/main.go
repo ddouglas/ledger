@@ -118,7 +118,7 @@ func buildAWSConfig() aws.Config {
 		awsConfig.WithEndpointResolver(aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
 			if service == s3.ServiceID {
 				return aws.Endpoint{
-					URL: "https://nyc3.digitaloceanspaces.com",
+					URL: cfg.Spaces.Endpoint,
 				}, nil
 			}
 
@@ -284,6 +284,8 @@ func actionAPI(c *cli.Context) error {
 	)
 
 	transaction := transaction.New(
+		transaction.WithLogger(core.logger),
+		transaction.WithS3(core.s3, cfg.Spaces.Bucket),
 		transaction.WithTransactionRepository(core.repos.transaction),
 	)
 

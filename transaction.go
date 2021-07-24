@@ -38,6 +38,7 @@ type Transaction struct {
 	CategoryID             null.String `db:"category_id" json:"categoryID"`
 	Name                   string      `db:"name" json:"name"`
 	Pending                bool        `db:"pending" json:"pending"`
+	HasReceipt             bool        `db:"has_receipt" json:"hasReceipt"`
 	PaymentChannel         string      `db:"payment_channel" json:"paymentChannel"` // ENUM: online, in store, other
 	MerchantName           null.String `db:"merchant_name" json:"merchantName"`
 	Categories             SliceString `db:"categories" json:"categories"` // Array, needs to be converted to comma-delimited string going into DB and Slice comming out

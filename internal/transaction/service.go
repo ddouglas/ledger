@@ -2,12 +2,16 @@
 package transaction
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pkg/errors"
 	"github.com/volatiletech/null"
 
@@ -18,8 +22,13 @@ import (
 )
 
 type Service interface {
+	AddReceiptToTransaction(ctx context.Context, transaction *ledger.Transaction, contentType string, receiptData []byte) error
 	ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error
 	ledger.TransactionRepository
+}
+
+var allowedFileTypes = []string{
+	"application/pdf", "image/jpeg",
 }
 
 func New(optFuncs ...configOption) Service {
@@ -152,6 +161,59 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			entry.WithError(err).Error()
 			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
 		}
+	}
+
+	return nil
+
+}
+
+func (s *service) AddReceiptToTransaction(ctx context.Context, transaction *ledger.Transaction, contentType string, receiptData []byte) error {
+
+	err := func(contentType string) error {
+		if contentType == "application/octet-stream" {
+			return errors.New("unable to correctly determine content type from data format")
+		}
+		for _, allowedType := range allowedFileTypes {
+			if contentType == allowedType {
+				return nil
+			}
+		}
+
+		return fmt.Errorf("%s is not an allowed file type, allowed types are: %s", contentType, strings.Join(allowedFileTypes, ", "))
+
+	}(contentType)
+	if err != nil {
+		return err
+	}
+
+	var ext string
+	switch contentType {
+	case "application/pdf":
+		ext = ".pdf"
+	case "image/jpeg":
+		ext = "jpg"
+
+	}
+
+	reader := bytes.NewReader(receiptData)
+
+	obj := s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(fmt.Sprintf("%s.%s", transaction.TransactionID, ext)),
+		Body:        reader,
+		ContentType: aws.String(contentType),
+	}
+
+	_, err = s.s3.PutObject(ctx, &obj)
+	if err != nil {
+		return errors.Wrap(err, "failed to write file to s3")
+	}
+
+	transaction.HasReceipt = true
+
+	_, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
+	if err != nil {
+		return errors.Wrap(err, "failed to update has_receipt flag on transaction")
 	}
 
 	return nil

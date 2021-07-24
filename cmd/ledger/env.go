@@ -51,6 +51,8 @@ type config struct {
 	Spaces struct {
 		ClientID     string `envconfig:"SPACES_CLIENT_ID" required:"true"`
 		ClientSecret string `envconfig:"SPACES_CLIENT_SECRET" required:"true"`
+		Endpoint     string `envconfig:"SPACES_ENDPOINT" required:"true"`
+		Bucket       string `envconfig:"SPACES_BUCKET" required:"true"`
 	}
 }
 
