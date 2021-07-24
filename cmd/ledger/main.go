@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -16,8 +15,6 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/smithy-go"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/auth"
@@ -83,10 +80,10 @@ func main() {
 			Usage:  "starts the ledger importer, which processes messages from a Redis PubSub and interacts with the gateway service",
 			Action: actionImporter,
 		},
-		{
-			Name:   "s3",
-			Action: actionS3Upload,
-		},
+		// {
+		// 	Name:   "s3",
+		// 	Action: actionS3Upload,
+		// },
 	}
 
 	err := app.Run(os.Args)
@@ -381,61 +378,58 @@ func actionImporter(c *cli.Context) error {
 
 }
 
-func actionS3Upload(c *cli.Context) error {
+// func actionS3Upload(c *cli.Context) error {
 
-	var ctx = context.Background()
+// 	var ctx = context.Background()
 
-	core := buildCore()
+// 	core := buildCore()
 
-	// file, err := os.Open("assets/example.jpg")
-	// if err != nil {
-	// 	core.logger.WithError(err).Fatal("failed to open example file")
-	// }
+// 	// file, err := os.Open("assets/example.jpg")
+// 	// if err != nil {
+// 	// 	core.logger.WithError(err).Fatal("failed to open example file")
+// 	// }
 
-	// defer file.Close()
+// 	// defer file.Close()
 
-	// obj := s3.PutObjectInput{
-	// 	Bucket:      aws.String("onetwentyseven"),
-	// 	Key:         aws.String("example.jpg"),
-	// 	Body:        file,
-	// 	ContentType: aws.String("image/jpeg"),
-	// }
+// 	// obj := s3.PutObjectInput{
+// 	// 	Bucket:      aws.String("onetwentyseven"),
+// 	// 	Key:         aws.String("example.jpg"),
+// 	// 	Body:        file,
+// 	// 	ContentType: aws.String("image/jpeg"),
+// 	// }
 
-	// _, err = core.s3.PutObject(context.Background(), &obj)
-	// if err != nil {
-	// 	core.logger.WithError(err).Fatal("failed to upload file")
-	// }
+// 	// _, err = core.s3.PutObject(context.Background(), &obj)
+// 	// if err != nil {
+// 	// 	core.logger.WithError(err).Fatal("failed to upload file")
+// 	// }
 
-	input := &s3.GetObjectInput{
-		Bucket: aws.String("onetwentyseven"),
-		Key:    aws.String("example2.jpg"),
-	}
+// 	// input := &s3.GetObjectInput{
+// 	// 	Bucket: aws.String("onetwentyseven"),
+// 	// 	Key:    aws.String("example.jpg"),
+// 	// }
 
-	file, err := core.s3.GetObject(ctx, input)
-	if err != nil {
-		var smithyOperationError smithy.OperationError
-		spew.Config.DisableMethods = false
-		spew.Dump(err)
-		core.logger.WithError(err).Fatal("failed to fetch file")
-	}
+// 	// file, err := core.s3.GetObject(ctx, input)
+// 	// if err != nil {
+// 	// 	core.logger.WithError(err).Fatal("failed to fetch file")
+// 	// }
 
-	data, err := io.ReadAll(file.Body)
-	if err != nil {
-		core.logger.WithError(err).Fatal("failed to read file")
-	}
+// 	// data, err := io.ReadAll(file.Body)
+// 	// if err != nil {
+// 	// 	core.logger.WithError(err).Fatal("failed to read file")
+// 	// }
 
-	newFile, _ := os.Create("example2.jpg")
-	newFile.Write(data)
-	newFile.Close()
+// 	// newFile, _ := os.Create("example2.jpg")
+// 	// newFile.Write(data)
+// 	// newFile.Close()
 
-	// presignClient := s3.NewPresignClient(core.s3)
+// 	// presignClient := s3.NewPresignClient(core.s3)
 
-	// req, err := presignClient.PresignGetObject(ctx, input)
-	// if err != nil {
-	// 	core.logger.WithError(err).Fatal("failed to fetch presigned url")
-	// }
+// 	// req, err := presignClient.PresignGetObject(ctx, input)
+// 	// if err != nil {
+// 	// 	core.logger.WithError(err).Fatal("failed to fetch presigned url")
+// 	// }
 
-	// fmt.Println(req.SignedHeader)
+// 	// fmt.Println(req.SignedHeader)
 
-	return nil
-}
+// 	return nil
+// }
