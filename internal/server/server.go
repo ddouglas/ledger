@@ -64,7 +64,7 @@ func (s *server) buildRouter() *chi.Mux {
 			r.Put("/items/{itemID}/accounts/{accountID}/transactions", s.handleUpdateTransactions)
 
 			r.Get("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}", s.handleGetAccountTransaction)
-			r.Patch("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}", nil)
+			r.Patch("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}", s.handlePatchAccountTransaction)
 		})
 
 		r.Route("/external", func(r chi.Router) {
