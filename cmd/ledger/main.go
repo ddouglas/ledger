@@ -384,28 +384,28 @@ func actionS3Upload(c *cli.Context) error {
 
 	core := buildCore()
 
-	// file, err := os.Open("example.pdf")
-	// if err != nil {
-	// 	core.logger.WithError(err).Fatal("failed to open example file")
-	// }
+	file, err := os.Open("assets/example.jpg")
+	if err != nil {
+		core.logger.WithError(err).Fatal("failed to open example file")
+	}
 
-	// defer file.Close()
+	defer file.Close()
 
-	// obj := s3.PutObjectInput{
-	// 	Bucket:      aws.String("onetwentyseven"),
-	// 	Key:         aws.String("example.pdf"),
-	// 	Body:        file,
-	// 	ContentType: aws.String("application/pdf"),
-	// }
+	obj := s3.PutObjectInput{
+		Bucket:      aws.String("onetwentyseven"),
+		Key:         aws.String("example.jpg"),
+		Body:        file,
+		ContentType: aws.String("image/jpeg"),
+	}
 
-	// _, err = core.s3.PutObject(context.Background(), &obj)
-	// if err != nil {
-	// 	core.logger.WithError(err).Fatal("failed to upload file")
-	// }
+	_, err = core.s3.PutObject(context.Background(), &obj)
+	if err != nil {
+		core.logger.WithError(err).Fatal("failed to upload file")
+	}
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String("onetwentyseven"),
-		Key:    aws.String("example.pdf"),
+		Key:    aws.String("example.jpg"),
 	}
 
 	presignClient := s3.NewPresignClient(core.s3)
