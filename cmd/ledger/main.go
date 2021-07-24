@@ -11,8 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/auth"
@@ -113,12 +115,13 @@ func buildS3() *s3.S3 {
 				"",
 			),
 		),
+		awsConfig.WithEndpointResolver(aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
+
+		})),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to load aws configuration: %s", err))
 	}
-
-	s3Config := s3.NewFromConfig()
 
 	// return s3.New(session.New(s3Config))
 
