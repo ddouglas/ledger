@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -384,38 +385,52 @@ func actionS3Upload(c *cli.Context) error {
 
 	core := buildCore()
 
-	file, err := os.Open("assets/example.jpg")
-	if err != nil {
-		core.logger.WithError(err).Fatal("failed to open example file")
-	}
+	// file, err := os.Open("assets/example.jpg")
+	// if err != nil {
+	// 	core.logger.WithError(err).Fatal("failed to open example file")
+	// }
 
-	defer file.Close()
+	// defer file.Close()
 
-	obj := s3.PutObjectInput{
-		Bucket:      aws.String("onetwentyseven"),
-		Key:         aws.String("example.jpg"),
-		Body:        file,
-		ContentType: aws.String("image/jpeg"),
-	}
+	// obj := s3.PutObjectInput{
+	// 	Bucket:      aws.String("onetwentyseven"),
+	// 	Key:         aws.String("example.jpg"),
+	// 	Body:        file,
+	// 	ContentType: aws.String("image/jpeg"),
+	// }
 
-	_, err = core.s3.PutObject(context.Background(), &obj)
-	if err != nil {
-		core.logger.WithError(err).Fatal("failed to upload file")
-	}
+	// _, err = core.s3.PutObject(context.Background(), &obj)
+	// if err != nil {
+	// 	core.logger.WithError(err).Fatal("failed to upload file")
+	// }
 
 	input := &s3.GetObjectInput{
 		Bucket: aws.String("onetwentyseven"),
-		Key:    aws.String("example.jpg"),
+		Key:    aws.String("example2.jpg"),
 	}
 
-	presignClient := s3.NewPresignClient(core.s3)
-
-	req, err := presignClient.PresignGetObject(ctx, input)
+	file, err := core.s3.GetObject(ctx, input)
 	if err != nil {
-		core.logger.WithError(err).Fatal("failed to fetch presigned url")
+		core.logger.WithError(err).Fatal("failed to fetch file")
 	}
 
-	fmt.Println(req.URL)
+	data, err := io.ReadAll(file.Body)
+	if err != nil {
+		core.logger.WithError(err).Fatal("failed to read file")
+	}
+
+	newFile, _ := os.Create("example2.jpg")
+	newFile.Write(data)
+	newFile.Close()
+
+	// presignClient := s3.NewPresignClient(core.s3)
+
+	// req, err := presignClient.PresignGetObject(ctx, input)
+	// if err != nil {
+	// 	core.logger.WithError(err).Fatal("failed to fetch presigned url")
+	// }
+
+	// fmt.Println(req.SignedHeader)
 
 	return nil
 }
