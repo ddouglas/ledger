@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
@@ -102,6 +104,8 @@ func buildCore() *core {
 }
 
 func buildS3() *s3.S3 {
+
+	awsConf, err := awsConfig.LoadDefaultConfig(context.TODO(), awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider()))
 
 	// s3Config := &aws.Config{
 	// 	Credentials: credentials.NewStaticCredentials(cfg.Spaces.ClientID, cfg.Spaces.ClientSecret, ""),
