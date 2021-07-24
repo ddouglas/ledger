@@ -284,6 +284,7 @@ func actionAPI(c *cli.Context) error {
 	)
 
 	transaction := transaction.New(
+		transaction.WithCache(cache),
 		transaction.WithLogger(core.logger),
 		transaction.WithS3(core.s3, cfg.Spaces.Bucket),
 		transaction.WithTransactionRepository(core.repos.transaction),

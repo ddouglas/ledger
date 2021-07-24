@@ -66,7 +66,7 @@ func (s *server) buildRouter() *chi.Mux {
 			r.Get("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}", s.handleGetAccountTransaction)
 			r.Patch("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}", s.handlePatchAccountTransaction)
 
-			// r.Get("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handlePostAccountTransactionReceipt)
+			r.Get("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handleGetAccountTransactionReceiptURL)
 			r.Post("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handlePostAccountTransactionReceipt)
 		})
 

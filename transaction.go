@@ -39,6 +39,7 @@ type Transaction struct {
 	Name                   string      `db:"name" json:"name"`
 	Pending                bool        `db:"pending" json:"pending"`
 	HasReceipt             bool        `db:"has_receipt" json:"hasReceipt"`
+	ReceiptType            null.String `db:"receipt_type" json:"receipt_type"`
 	PaymentChannel         string      `db:"payment_channel" json:"paymentChannel"` // ENUM: online, in store, other
 	MerchantName           null.String `db:"merchant_name" json:"merchantName"`
 	Categories             SliceString `db:"categories" json:"categories"` // Array, needs to be converted to comma-delimited string going into DB and Slice comming out
@@ -57,6 +58,15 @@ type Transaction struct {
 
 	PaymentMeta *TransactionPaymentMeta `json:"transactionMeta" diff:"-"`
 	Location    *TransactionLocation    `json:"location" diff:"-"`
+}
+
+func (r *Transaction) Filename() (*string, error) {
+	if !r.HasReceipt || !r.ReceiptType.Valid {
+		return nil, fmt.Errorf("transaction does not have a receipt associated with it")
+	}
+
+	a := fmt.Sprintf("%s.%s", r.TransactionID, r.ReceiptType.String)
+	return &a, nil
 }
 
 type TransactionCategory struct {

@@ -22,7 +22,8 @@ import (
 )
 
 type Service interface {
-	AddReceiptToTransaction(ctx context.Context, transaction *ledger.Transaction, contentType string, receiptData []byte) error
+	TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error)
+	AddReceiptToTransaction(ctx context.Context, itemID, transactionID, contentType string, receiptData []byte) error
 	ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error
 	ledger.TransactionRepository
 }
@@ -167,21 +168,63 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 }
 
-func (s *service) AddReceiptToTransaction(ctx context.Context, transaction *ledger.Transaction, contentType string, receiptData []byte) error {
+func (s *service) TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error) {
 
-	err := func(contentType string) error {
-		if contentType == "application/octet-stream" {
-			return errors.New("unable to correctly determine content type from data format")
-		}
-		for _, allowedType := range allowedFileTypes {
-			if contentType == allowedType {
-				return nil
-			}
-		}
+	urlStr, err := s.cache.FetchPresignedURL(ctx, transactionID)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to fetch url from cache")
+	}
 
-		return fmt.Errorf("%s is not an allowed file type, allowed types are: %s", contentType, strings.Join(allowedFileTypes, ", "))
+	if urlStr != "" {
+		return urlStr, nil
+	}
 
-	}(contentType)
+	transaction, err := s.Transaction(ctx, itemID, transactionID)
+	if err != nil {
+		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to fetch transaction")
+	}
+
+	filename, err := transaction.Filename()
+	if err != nil {
+		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] transaction does not have a receipt file associated with it")
+	}
+
+	requestObj := s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    filename,
+	}
+
+	_, err = s.s3.GetObject(ctx, &requestObj)
+	if err != nil {
+		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to fetch receipt from object store")
+	}
+
+	psClient := s3.NewPresignClient(s.s3)
+
+	expireDuration := time.Hour
+
+	url, err := psClient.PresignGetObject(ctx, &requestObj, s3.WithPresignExpires(expireDuration))
+	if err != nil {
+		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to generate presigned url for object")
+	}
+
+	err = s.cache.CachePresignedURL(ctx, transactionID, url.URL, expireDuration)
+	if err != nil {
+		s.logger.WithError(err).Error("failed to cache url")
+	}
+
+	return url.URL, nil
+
+}
+
+func (s *service) AddReceiptToTransaction(ctx context.Context, itemID, transactionID, contentType string, receiptData []byte) error {
+
+	transaction, err := s.Transaction(ctx, itemID, transactionID)
+	if err != nil {
+		return errors.Wrap(err, "[transaction.AddReceiptToTransaction] failed to fetch transaction")
+	}
+
+	err = validateContentType(contentType)
 	if err != nil {
 		return err
 	}
@@ -206,18 +249,31 @@ func (s *service) AddReceiptToTransaction(ctx context.Context, transaction *ledg
 
 	_, err = s.s3.PutObject(ctx, &obj)
 	if err != nil {
-		return errors.Wrap(err, "failed to write file to s3")
+		return errors.Wrap(err, "[transaction.AddReceiptToTransaction] failed to write file to s3")
 	}
 
 	transaction.HasReceipt = true
+	transaction.ReceiptType.SetValid(ext)
 
 	_, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
 	if err != nil {
-		return errors.Wrap(err, "failed to update has_receipt flag on transaction")
+		return errors.Wrap(err, "[transaction.AddReceiptToTransaction] failed to update has_receipt flag on transaction")
 	}
 
 	return nil
 
+}
+func validateContentType(contentType string) error {
+	if contentType == "application/octet-stream" {
+		return errors.New("unable to correctly determine content type from data format")
+	}
+	for _, allowedType := range allowedFileTypes {
+		if contentType == allowedType {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("%s is not an allowed file type, allowed types are: %s", contentType, strings.Join(allowedFileTypes, ", "))
 }
 
 // func sleep() {

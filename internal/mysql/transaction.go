@@ -25,6 +25,7 @@ var transactionColumns = []string{
 	"name",
 	"pending",
 	"has_receipt",
+	"receipt_type",
 	"payment_channel",
 	"merchant_name",
 	"categories",
@@ -206,6 +207,7 @@ func (r *transactionRepository) CreateTransaction(ctx context.Context, transacti
 			transaction.Name,
 			transaction.Pending,
 			transaction.HasReceipt,
+			transaction.ReceiptType,
 			transaction.PaymentChannel,
 			transaction.MerchantName,
 			transaction.Categories,
@@ -244,6 +246,7 @@ func (r *transactionRepository) UpdateTransaction(ctx context.Context, transacti
 		Set("name", transaction.Name).
 		Set("pending", transaction.Pending).
 		Set("has_receipt", transaction.HasReceipt).
+		Set("receipt_type", transaction.ReceiptType).
 		Set("payment_channel", transaction.PaymentChannel).
 		Set("merchant_name", transaction.MerchantName).
 		Set("categories", transaction.Categories).
