@@ -11,10 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/auth"
@@ -47,7 +43,7 @@ type core struct {
 	newrelic *newrelic.Application
 	repos    *repositories
 	gateway  gateway.Service
-	s3       *s3.S3
+	// s3       *s3.S3
 }
 
 type repositories struct {
@@ -80,10 +76,10 @@ func main() {
 			Usage:  "starts the ledger importer, which processes messages from a Redis PubSub and interacts with the gateway service",
 			Action: actionImporter,
 		},
-		{
-			Name:   "s3",
-			Action: actionS3Upload,
-		},
+		// {
+		// 	Name:   "s3",
+		// 	Action: actionS3Upload,
+		// },
 	}
 
 	err := app.Run(os.Args)
@@ -100,20 +96,21 @@ func buildCore() *core {
 		newrelic: buildNewRelic(),
 		repos:    buildRepositories(),
 		gateway:  buildGateway(),
+		// s3:       buildS3(),
 	}
 }
 
-func buildS3() *s3.S3 {
+// func buildS3() *s3.S3 {
 
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(cfg.Spaces.ClientID, cfg.Spaces.ClientSecret, ""),
-		Endpoint:    aws.String("https://nyc3.digitaloceanspaces.com"),
-		Region:      aws.String("us-east-1"),
-	}
+// 	s3Config := &aws.Config{
+// 		Credentials: credentials.NewStaticCredentials(cfg.Spaces.ClientID, cfg.Spaces.ClientSecret, ""),
+// 		Endpoint:    aws.String("https://nyc3.digitaloceanspaces.com"),
+// 		Region:      aws.String("us-east-1"),
+// 	}
 
-	return s3.New(session.New(s3Config))
+// 	return s3.New(session.New(s3Config))
 
-}
+// }
 
 func buildNewRelic() *newrelic.Application {
 
@@ -358,18 +355,18 @@ func actionImporter(c *cli.Context) error {
 
 }
 
-func actionS3Upload(c *cli.Context) error {
+// func actionS3Upload(c *cli.Context) error {
 
-	core := buildCore()
+// 	core := buildCore()
 
-	spaces, err := core.s3.ListBuckets(nil)
-	if err != nil {
-		core.logger.WithError(err).Fatal("failed to list buckets")
-	}
+// 	spaces, err := core.s3.ListBuckets(&s3.ListBucketsInput{})
+// 	if err != nil {
+// 		core.logger.WithError(err).Fatal("failed to list buckets")
+// 	}
 
-	for _, b := range spaces.Buckets {
-		fmt.Println(aws.StringValue(b.Name))
-	}
+// 	for _, b := range spaces.Buckets {
+// 		fmt.Println(aws.StringValue(b.Name))
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
