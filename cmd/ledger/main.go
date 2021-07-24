@@ -13,7 +13,6 @@ import (
 
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/auth"
@@ -105,13 +104,21 @@ func buildCore() *core {
 
 func buildS3() *s3.S3 {
 
-	awsConf, err := awsConfig.LoadDefaultConfig(context.TODO(), awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider()))
+	awsConf, err := awsConfig.LoadDefaultConfig(
+		context.TODO(),
+		awsConfig.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(
+				cfg.Spaces.ClientID,
+				cfg.Spaces.ClientSecret,
+				"",
+			),
+		),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to load aws configuration: %s", err))
+	}
 
-	// s3Config := &aws.Config{
-	// 	Credentials: credentials.NewStaticCredentials(cfg.Spaces.ClientID, cfg.Spaces.ClientSecret, ""),
-	// 	Endpoint:    aws.String("https://nyc3.digitaloceanspaces.com"),
-	// 	Region:      aws.String("us-east-1"),
-	// }
+	s3Config := s3.NewFromConfig()
 
 	// return s3.New(session.New(s3Config))
 
