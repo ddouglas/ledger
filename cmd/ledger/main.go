@@ -78,7 +78,7 @@ func main() {
 		{
 			Name:   "worker",
 			Usage:  "starts the ledger worker, which handles various background tasks such as processing plaid webhooks and sending notifications",
-			Action: actionImporter,
+			Action: actionWorker,
 		},
 		// {
 		// 	Name:   "s3",
@@ -342,7 +342,7 @@ func actionAPI(c *cli.Context) error {
 
 }
 
-func actionImporter(c *cli.Context) error {
+func actionWorker(c *cli.Context) error {
 
 	core := buildCore()
 
@@ -372,7 +372,27 @@ func actionImporter(c *cli.Context) error {
 		importer.WithTransactions(transaction),
 	)
 
-	importer.Run()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+
+	// Channel to listen for interrupts and to run a graceful shutdown
+	osSignals := make(chan os.Signal, 1)
+	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
+
+	// Blocking until read from channel(s)
+	select {
+	case <-osSignals:
+		core.logger.Println("starting worker shutdown...")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		err := server.GracefullyShutdown(ctx)
+		if err != nil {
+			core.logger.Fatalf("error trying to shutdown http server: %v", err.Error())
+		}
+
+	}
+
+	importer.Run(ctx)
 
 	return nil
 

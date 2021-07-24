@@ -16,7 +16,7 @@ import (
 )
 
 type Service interface {
-	Run()
+	Run(ctx context.Context)
 	VerifyWebhookMessage(ctx context.Context, header http.Header, message []byte) error
 	PublishWebhookMessage(ctx context.Context, webhook *WebhookMessage) error
 	PublishCustomWebhookMessage(ctx context.Context, webhook *WebhookMessage) error
@@ -30,7 +30,7 @@ func New(optFucs ...configOption) Service {
 	return s
 }
 
-func (s *service) Run() {
+func (s *service) Run(ctx context.Context) {
 
 	entry := s.logger.WithFields(logrus.Fields{
 		"service": "Importer",
