@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/auth"
@@ -100,17 +101,17 @@ func buildCore() *core {
 	}
 }
 
-// func buildS3() *s3.S3 {
+func buildS3() *s3.S3 {
 
-// 	s3Config := &aws.Config{
-// 		Credentials: credentials.NewStaticCredentials(cfg.Spaces.ClientID, cfg.Spaces.ClientSecret, ""),
-// 		Endpoint:    aws.String("https://nyc3.digitaloceanspaces.com"),
-// 		Region:      aws.String("us-east-1"),
-// 	}
+	// s3Config := &aws.Config{
+	// 	Credentials: credentials.NewStaticCredentials(cfg.Spaces.ClientID, cfg.Spaces.ClientSecret, ""),
+	// 	Endpoint:    aws.String("https://nyc3.digitaloceanspaces.com"),
+	// 	Region:      aws.String("us-east-1"),
+	// }
 
-// 	return s3.New(session.New(s3Config))
+	// return s3.New(session.New(s3Config))
 
-// }
+}
 
 func buildNewRelic() *newrelic.Application {
 
