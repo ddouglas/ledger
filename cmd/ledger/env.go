@@ -47,6 +47,11 @@ type config struct {
 		Environment  string `default:"sandbox"`
 		Webhook      string `required:"true"`
 	}
+
+	Spaces struct {
+		ClientID     string `envconfig:"SPACES_CLIENT_ID" required:"true"`
+		ClientSecret string `envconfig:"SPACES_CLIENT_SECRET" required:"true"`
+	}
 }
 
 // buildConfig load environment variables from a

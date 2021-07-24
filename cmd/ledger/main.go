@@ -11,6 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/auth"
@@ -43,6 +47,7 @@ type core struct {
 	newrelic *newrelic.Application
 	repos    *repositories
 	gateway  gateway.Service
+	s3       *s3.S3
 }
 
 type repositories struct {
@@ -334,5 +339,20 @@ func actionImporter(c *cli.Context) error {
 	importer.Run()
 
 	return nil
+
+}
+
+func actionS3Upload(c *cli.Context) error {
+
+	core := buildCore()
+
+	s3Config := &aws.Config{
+		Credentials: credentials.NewStaticCredentials(key, secret, ""),
+		Endpoint:    aws.String("https://nyc3.digitaloceanspaces.com"),
+		Region:      aws.String("us-east-1"),
+	}
+
+	newSession := session.New(s3Config)
+	s3Client := s3.New(newSession)
 
 }
