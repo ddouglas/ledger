@@ -42,13 +42,12 @@ var (
 )
 
 type core struct {
-	logger    *logrus.Logger
-	redis     *redis.Client
-	newrelic  *newrelic.Application
-	repos     *repositories
-	gateway   gateway.Service
-	s3        *s3.Client
-	s3Presign *s3.PresignClient
+	logger   *logrus.Logger
+	redis    *redis.Client
+	newrelic *newrelic.Application
+	repos    *repositories
+	gateway  gateway.Service
+	s3       *s3.Client
 }
 
 type repositories struct {
@@ -96,13 +95,12 @@ func main() {
 
 func buildCore() *core {
 	return &core{
-		logger:    logger,
-		redis:     buildRedis(),
-		newrelic:  buildNewRelic(),
-		repos:     buildRepositories(),
-		gateway:   buildGateway(),
-		s3:        buildS3(),
-		s3Presign: buildS3Presign(),
+		logger:   logger,
+		redis:    buildRedis(),
+		newrelic: buildNewRelic(),
+		repos:    buildRepositories(),
+		gateway:  buildGateway(),
+		s3:       buildS3(),
 	}
 }
 
@@ -134,8 +132,7 @@ func buildAWSConfig() aws.Config {
 }
 
 func buildS3() *s3.Client {
-
-	return s3.NewFromConfig(awsConf)
+	return s3.NewFromConfig(buildAWSConfig())
 }
 
 func buildNewRelic() *newrelic.Application {
@@ -405,6 +402,20 @@ func actionS3Upload(c *cli.Context) error {
 	// if err != nil {
 	// 	core.logger.WithError(err).Fatal("failed to upload file")
 	// }
+
+	input := &s3.GetObjectInput{
+		Bucket: aws.String("onetwentyseven"),
+		Key:    aws.String("example.pdf"),
+	}
+
+	presignClient := s3.NewPresignClient(core.s3)
+
+	req, err := presignClient.PresignGetObject(ctx, input)
+	if err != nil {
+		core.logger.WithError(err).Fatal("failed to fetch presigned url")
+	}
+
+	fmt.Println(req.URL)
 
 	return nil
 }
