@@ -116,12 +116,20 @@ func buildS3() *s3.S3 {
 			),
 		),
 		awsConfig.WithEndpointResolver(aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
+			if service == s3.ServiceID {
+				return aws.Endpoint{
+					URL: "https://nyc3.digitaloceanspaces.com",
+				}, nil
+			}
 
+			return aws.Endpoint{}, nil
 		})),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to load aws configuration: %s", err))
 	}
+
+	s3.NewFromConfig(awsConf)
 
 	// return s3.New(session.New(s3Config))
 
