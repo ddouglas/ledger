@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.5.0
 	github.com/aws/aws-sdk-go-v2/credentials v1.3.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.11.1
+	github.com/davecgh/go-spew v1.1.1
 	github.com/friendsofgo/errors v0.9.2 // indirect
 	github.com/go-chi/chi/v5 v5.0.3
 	github.com/go-redis/redis/v8 v8.11.0

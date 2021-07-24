@@ -16,6 +16,8 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/auth"
@@ -411,6 +413,9 @@ func actionS3Upload(c *cli.Context) error {
 
 	file, err := core.s3.GetObject(ctx, input)
 	if err != nil {
+		var smithyOperationError smithy.OperationError
+		spew.Config.DisableMethods = false
+		spew.Dump(err)
 		core.logger.WithError(err).Fatal("failed to fetch file")
 	}
 
