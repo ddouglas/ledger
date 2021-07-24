@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"
@@ -23,38 +24,43 @@ type WebhookMessage struct {
 	Error           *plaid.Error `json:"error,omitempty"`
 	NewTransactions int          `json:"new_transactions"`
 	// Custom Fields
-	StartDate time.Time              `json:"startDate,omitempty"`
-	EndDate   time.Time              `json:"endDate,omitempty"`
-	Options   *WebhookMessageOptions `json:"options,omitempty"`
+	StartDate time.Time                     `json:"startDate,omitempty"`
+	EndDate   time.Time                     `json:"endDate,omitempty"`
+	Options   *ledger.WebhookMessageOptions `json:"options,omitempty"`
 }
 
 type WebhookMessageOptions struct {
 	AccountIDs []string `json:"accountIDs,omitempty"`
 }
 
-func (s *service) PublishWebhookMessage(ctx context.Context, webhook *WebhookMessage) error {
+func (s *service) PublishWebhookMessage(ctx context.Context, webhook *ledger.WebhookMessage) error {
 	// validate that the item this webhook is for exists
 	_, err := s.item.Item(ctx, webhook.ItemID)
 	if err != nil {
 		s.logger.WithField("item_id", webhook.ItemID).WithError(err).Error()
-		return errors.New("unable to locate item with provided item id")
+		return errors.Wrapf(err, "[importer.PublishWebhookMessage] unable to locate item with provided item id: %s", webhook.ItemID)
 	}
 
 	data, err := json.Marshal(webhook)
 	if err != nil {
-		return fmt.Errorf("failed to marshal message: %w", err)
+		return errors.Wrap(err, "[importer.PublishWebhookMessage] failed to marshal message")
+	}
+
+	err = s.WebhookRepository.LogWebhook(ctx, webhook)
+	if err != nil {
+		return errors.Wrap(err, "[importer.PublishWebhookMessage]")
 	}
 
 	_, err = s.redis.RPush(ctx, gateway.PubSubPlaidWebhook, data).Result()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "[importer.PublishWebhookMessage]")
 	}
 
 	return nil
 }
 
 // PublishCustomWebhookMessage
-func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *WebhookMessage) error {
+func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *ledger.WebhookMessage) error {
 
 	if webhook.StartDate.IsZero() || webhook.EndDate.IsZero() {
 		return errors.New("startDate and endDate are required")

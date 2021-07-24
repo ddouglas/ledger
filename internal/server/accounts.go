@@ -8,7 +8,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
-	"github.com/ddouglas/ledger/internal/importer"
 	"github.com/go-chi/chi/v5"
 	"github.com/pkg/errors"
 	"github.com/r3labs/diff/v2"
@@ -90,7 +89,7 @@ func (s *server) handleUpdateTransactions(w http.ResponseWriter, r *http.Request
 
 	var ctx = r.Context()
 
-	var message = new(importer.WebhookMessage)
+	var message = new(ledger.WebhookMessage)
 	err := json.NewDecoder(r.Body).Decode(message)
 	if err != nil {
 		s.logger.WithError(err).Error()
@@ -111,7 +110,7 @@ func (s *server) handleUpdateTransactions(w http.ResponseWriter, r *http.Request
 	}
 
 	message.ItemID = itemID
-	message.Options = &importer.WebhookMessageOptions{
+	message.Options = &ledger.WebhookMessageOptions{
 		AccountIDs: []string{accountID},
 	}
 

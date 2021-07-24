@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
@@ -18,8 +19,8 @@ import (
 type Service interface {
 	Run(ctx context.Context)
 	VerifyWebhookMessage(ctx context.Context, header http.Header, message []byte) error
-	PublishWebhookMessage(ctx context.Context, webhook *WebhookMessage) error
-	PublishCustomWebhookMessage(ctx context.Context, webhook *WebhookMessage) error
+	PublishWebhookMessage(ctx context.Context, webhook *ledger.WebhookMessage) error
+	PublishCustomWebhookMessage(ctx context.Context, webhook *ledger.WebhookMessage) error
 }
 
 func New(optFucs ...configOption) Service {
@@ -36,10 +37,10 @@ func (s *service) Run(ctx context.Context) {
 		"service": "Importer",
 		"channel": gateway.PubSubPlaidWebhook,
 	})
-	entry.Info("Subscibed to Redis Pubsub")
+	entry.Info("Monitoring Redis Queue for Messages")
 	for {
 		txn := s.newrelic.StartTransaction("check-plaid-message-queue")
-		ctx := newrelic.NewContext(context.Background(), txn)
+		ctx := newrelic.NewContext(ctx, txn)
 		entry := s.logger.WithContext(ctx)
 		entry.Debug("checking message queue")
 
@@ -59,7 +60,7 @@ func (s *service) Run(ctx context.Context) {
 		}
 
 		entry.WithField("message", data).Info("webhook received, dispatching processor")
-		var message = new(WebhookMessage)
+		var message = new(ledger.WebhookMessage)
 		err = json.Unmarshal([]byte(data), message)
 		if err != nil {
 			entry.WithError(err).Error("failed to decode message")
@@ -80,7 +81,7 @@ func sleep() {
 	time.Sleep(time.Second * 1)
 }
 
-func (s *service) processMessage(ctx context.Context, message *WebhookMessage) {
+func (s *service) processMessage(ctx context.Context, message *ledger.WebhookMessage) {
 
 	switch message.WebhookType {
 	case "TRANSACTIONS":
@@ -91,7 +92,7 @@ func (s *service) processMessage(ctx context.Context, message *WebhookMessage) {
 
 }
 
-func (s *service) processTransactionUpdate(ctx context.Context, message *WebhookMessage) {
+func (s *service) processTransactionUpdate(ctx context.Context, message *ledger.WebhookMessage) {
 
 	txn := newrelic.FromContext(ctx)
 	entry := s.logger.WithContext(ctx)

@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/ddouglas/ledger/internal/item"
@@ -21,6 +22,14 @@ type service struct {
 	gateway  gateway.Service
 	logger   *logrus.Logger
 	newrelic *newrelic.Application
+
+	ledger.WebhookRepository
+}
+
+func WithWebhookRepository(webhook ledger.WebhookRepository) configOption {
+	return func(s *service) {
+		s.WebhookRepository = webhook
+	}
 }
 
 func WithNewrelic(newrelic *newrelic.Application) configOption {

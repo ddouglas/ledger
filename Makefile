@@ -18,8 +18,8 @@ build-backend:
 server: build-backend
 	./.build/ledger server
 
-importer: build-backend
-	./.build/ledger importer
+worker: build-backend
+	./.build/ledger worker
 
 tunnel:
 	ngrok http 9000

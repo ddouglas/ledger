@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
-	"github.com/ddouglas/ledger/internal/importer"
 )
 
 func (s *server) handlePlaidPostV1Webhook(w http.ResponseWriter, r *http.Request) {
 
 	var ctx = r.Context()
 
-	var message = new(importer.WebhookMessage)
+	var message = new(ledger.WebhookMessage)
 
 	defer closeRequestBody(ctx, r)
 	err := json.NewDecoder(r.Body).Decode(message)

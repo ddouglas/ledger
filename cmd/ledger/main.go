@@ -57,6 +57,7 @@ type repositories struct {
 	item        ledger.ItemRepository
 	transaction ledger.TransactionRepository
 	user        ledger.UserRepository
+	webhook     ledger.WebhookRepository
 }
 
 func init() {
@@ -208,10 +209,11 @@ func buildRepositories() *repositories {
 	return &repositories{
 		account:     mysql.NewAccountRepository(dbx),
 		health:      mysql.NewHealthRepository(dbx),
+		institution: mysql.NewInstitutionRepository(dbx),
 		item:        mysql.NewItemRepository(dbx),
 		transaction: mysql.NewTransactionRepository(dbx),
 		user:        mysql.NewUserRepository(dbx),
-		institution: mysql.NewInstitutionRepository(dbx),
+		webhook:     mysql.NewWebhookRepository(dbx),
 	}
 
 }
@@ -370,9 +372,10 @@ func actionWorker(c *cli.Context) error {
 		importer.WithAccounts(accounts),
 		importer.WithItems(item),
 		importer.WithTransactions(transaction),
+		importer.WithWebhookRepository(core.repos.webhook),
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	go importer.Run(ctx)
 
