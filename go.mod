@@ -23,6 +23,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/plaid/plaid-go v0.0.0-20210525182452-1d0b06713a96
 	github.com/r3labs/diff v1.1.0
+	github.com/r3labs/diff/v2 v2.13.6 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6
 	github.com/urfave/cli/v2 v2.3.0

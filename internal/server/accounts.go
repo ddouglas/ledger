@@ -11,7 +11,6 @@ import (
 	"github.com/ddouglas/ledger/internal/importer"
 	"github.com/go-chi/chi/v5"
 	"github.com/pkg/errors"
-	"github.com/r3labs/diff"
 	"github.com/r3labs/diff/v2"
 )
 
@@ -248,15 +247,17 @@ func (s *server) handlePatchAccountTransaction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	changelog, err := diff.Diff()
+	differ, _ := diff.NewDiffer()
+
+	changelog, err := differ.Diff(transaction, requestTransactions)
 	if err != nil {
 		GetLogEntry(r).WithError(err).Error()
-		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to parse request body as json"))
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to properly diff existing and provided items"))
 		return
-
-		return errors.New("failed to properly diff existing and provided items")
 	}
 
 	spew.Dump(changelog)
+
+	s.writeResponse(ctx, w, http.StatusOK, transaction)
 
 }
