@@ -80,6 +80,10 @@ func main() {
 			Usage:  "starts the ledger importer, which processes messages from a Redis PubSub and interacts with the gateway service",
 			Action: actionImporter,
 		},
+		{
+			Name:   "s3",
+			Action: actionS3Upload,
+		},
 	}
 
 	err := app.Run(os.Args)
@@ -358,13 +362,14 @@ func actionS3Upload(c *cli.Context) error {
 
 	core := buildCore()
 
-	s3Config := &aws.Config{
-		Credentials: credentials.NewStaticCredentials(key, secret, ""),
-		Endpoint:    aws.String("https://nyc3.digitaloceanspaces.com"),
-		Region:      aws.String("us-east-1"),
+	spaces, err := core.s3.ListBuckets(nil)
+	if err != nil {
+		core.logger.WithError(err).Fatal("failed to list buckets")
 	}
 
-	newSession := session.New(s3Config)
-	s3Client := s3.New(newSession)
+	for _, b := range spaces.Buckets {
+		fmt.Println(aws.StringValue(b.Name))
+	}
 
+	return nil
 }
