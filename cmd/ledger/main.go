@@ -76,8 +76,8 @@ func main() {
 			Action: actionAPI,
 		},
 		{
-			Name:   "importer",
-			Usage:  "starts the ledger importer, which processes messages from a Redis PubSub and interacts with the gateway service",
+			Name:   "worker",
+			Usage:  "starts the ledger worker, which handles various background tasks such as processing plaid webhooks and sending notifications",
 			Action: actionImporter,
 		},
 		// {
