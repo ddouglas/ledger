@@ -99,6 +99,18 @@ func buildCore() *core {
 	}
 }
 
+func buildS3() *s3.S3 {
+
+	s3Config := &aws.Config{
+		Credentials: credentials.NewStaticCredentials(cfg.Spaces.ClientID, cfg.Spaces.ClientSecret, ""),
+		Endpoint:    aws.String("https://nyc3.digitaloceanspaces.com"),
+		Region:      aws.String("us-east-1"),
+	}
+
+	return s3.New(session.New(s3Config))
+
+}
+
 func buildNewRelic() *newrelic.Application {
 
 	entry := logger.WithField("service", "NewRelic")
