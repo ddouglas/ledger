@@ -89,3 +89,21 @@ CREATE TABLE `transactions` (
     CONSTRAINT `transactions_account_id_accounts_id` FOREIGN KEY (`account_id`) REFERENCES `ledger`.`accounts` (`account_id`) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT `transactions_item_id_items_id_foreign` FOREIGN KEY (`item_id`) REFERENCES `ledger`.`user_items` (`item_id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) COLLATE = 'utf8mb4_bin' ENGINE = InnoDB;
+
+CREATE TABLE `transaction_changelogs` (
+    `item_id` VARCHAR(64) NOT NULL COLLATE 'utf8_bin',
+    `transaction_id` VARCHAR(64) NOT NULL COLLATE 'utf8_bin',
+    `changelog_id` INT(11) NOT NULL AUTO_INCREMENT,
+    `changelog` JSON NOT NULL,
+    `created_at` DATETIME NOT NULL,
+    `updated_at` DATETIME NOT NULL,
+    PRIMARY KEY (`item_id`, `transaction_id`, `changelog_id`) USING BTREE,
+    INDEX `changelog_id` (`changelog_id`) USING BTREE
+) COLLATE = 'utf8_bin' ENGINE = InnoDB;
+
+CREATE TABLE `webhook_log` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `payload` JSON NOT NULL,
+    `created_at` DATETIME NOT NULL,
+    PRIMARY KEY (`id`) USING BTREE
+) COLLATE = 'latin1_swedish_ci' ENGINE = InnoDB;
