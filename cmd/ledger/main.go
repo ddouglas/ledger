@@ -374,25 +374,15 @@ func actionWorker(c *cli.Context) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 
+	go importer.Run(ctx)
+
 	// Channel to listen for interrupts and to run a graceful shutdown
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
 
-	// Blocking until read from channel(s)
-	select {
-	case <-osSignals:
-		core.logger.Println("starting worker shutdown...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		err := server.GracefullyShutdown(ctx)
-		if err != nil {
-			core.logger.Fatalf("error trying to shutdown http server: %v", err.Error())
-		}
-
-	}
-
-	importer.Run(ctx)
+	<-osSignals
+	core.logger.Println("starting worker shutdown...")
+	cancel()
 
 	return nil
 
