@@ -27,3 +27,42 @@ type WebhookMessage struct {
 type WebhookMessageOptions struct {
 	AccountIDs []string `json:"accountIDs,omitempty"`
 }
+
+type WebhookCode string
+
+const (
+	CodeInitialUpdate       WebhookCode = "INITIAL_UPDATE"
+	CodeHistoricalUpdate    WebhookCode = "HISTORICAL_UPDATE"
+	CodeDefaultUpdate       WebhookCode = "DEFAULT_UPDATE"
+	CodeCustomUpdate        WebhookCode = "CUSTOM_UPDATE"
+	CodeTransactionsRemoved WebhookCode = "TRANSACTIONS_REMOVED"
+)
+
+var AllWebhookCodes = []WebhookCode{
+	CodeCustomUpdate, CodeDefaultUpdate, CodeHistoricalUpdate,
+	CodeInitialUpdate, CodeTransactionsRemoved,
+}
+
+func (c WebhookCode) IsValid() bool {
+	for _, code := range AllWebhookCodes {
+		if c == code {
+			return true
+		}
+	}
+
+	return false
+}
+
+var EmailAllowedCode = []WebhookCode{
+	CodeDefaultUpdate,
+}
+
+func (c WebhookCode) SendEmail() bool {
+	for _, code := range EmailAllowedCode {
+		if c == code {
+			return true
+		}
+	}
+
+	return false
+}
