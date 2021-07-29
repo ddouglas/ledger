@@ -4,6 +4,7 @@ import "github.com/go-redis/redis/v8"
 
 type Service interface {
 	authService
+	plaidService
 	transactionService
 }
 

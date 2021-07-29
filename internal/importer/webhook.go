@@ -97,7 +97,7 @@ func (s *service) PublishCustomWebhookMessage(ctx context.Context, webhook *ledg
 
 	err = s.PublishWebhookMessage(ctx, webhook)
 	if err != nil {
-		return fmt.Errorf("failed to publish webhook message to importer")
+		return fmt.Errorf("failed to publish webhook message to importer: %w", err)
 	}
 
 	item.IsRefreshing = true

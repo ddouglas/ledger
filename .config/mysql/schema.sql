@@ -9,12 +9,22 @@ CREATE TABLE `users` (
     UNIQUE INDEX `email` (`email`) USING BTREE
 ) COLLATE = 'utf8mb4_bin' ENGINE = InnoDB;
 
-CREATE TABLE `institutions` (
+CREATE TABLE `plaid_institutions` (
     `id` VARCHAR(50) NOT NULL COLLATE 'utf8mb4_bin',
     `name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_bin',
     `created_at` DATETIME NOT NULL,
     `updated_at` DATETIME NOT NULL,
     PRIMARY KEY (`id`) USING BTREE
+) COLLATE = 'utf8mb4_bin' ENGINE = InnoDB;
+
+CREATE TABLE `plaid_categories` (
+    `category_id` VARCHAR(64) NOT NULL COLLATE 'utf8mb4_bin',
+    `name` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_bin',
+    `group` VARCHAR(64) NOT NULL COLLATE 'utf8mb4_bin',
+    `hierarchy` JSON NOT NULL,
+    `created_at` DATETIME NOT NULL,
+    `updated_at` DATETIME NOT NULL,
+    PRIMARY KEY (`category_id`) USING BTREE
 ) COLLATE = 'utf8mb4_bin' ENGINE = InnoDB;
 
 CREATE TABLE `user_items` (

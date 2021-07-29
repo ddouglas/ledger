@@ -13,7 +13,7 @@ type service struct {
 	account account.Service
 
 	ledger.ItemRepository
-	ledger.InstitutionRepository
+	ledger.PlaidRepository
 }
 
 func WithItemRepository(item ledger.ItemRepository) configOption {
@@ -22,9 +22,9 @@ func WithItemRepository(item ledger.ItemRepository) configOption {
 	}
 }
 
-func WithInstitutionRepository(institution ledger.InstitutionRepository) configOption {
+func WithPlaidRepository(plaid ledger.PlaidRepository) configOption {
 	return func(s *service) {
-		s.InstitutionRepository = institution
+		s.PlaidRepository = plaid
 	}
 }
 

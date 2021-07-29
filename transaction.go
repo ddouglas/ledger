@@ -18,16 +18,13 @@ type TransactionRepository interface {
 	Transaction(ctx context.Context, itemID, transactionID string) (*Transaction, error)
 	TransactionsCount(ctx context.Context, itemID, accountID string, filters *TransactionFilter) (uint64, error)
 	TransactionsPaginated(ctx context.Context, itemID, accountID string, filters *TransactionFilter) ([]*Transaction, error)
-	TransactionDistinctCategories(ctx context.Context, itemID, accountID string, filters *TransactionFilter) ([]*TransactionCategory, error)
-	TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*Transaction, error)
 	CreateTransaction(ctx context.Context, transaction *Transaction) (*Transaction, error)
 	UpdateTransaction(ctx context.Context, transactionID string, transaction *Transaction) (*Transaction, error)
 }
 
 type PaginatedTransactions struct {
-	Categories   []*TransactionCategory `json:"categories"`
-	Transactions []*Transaction         `json:"transactions"`
-	Total        uint64                 `json:"total"`
+	Transactions []*Transaction `json:"transactions"`
+	Total        uint64         `json:"total"`
 }
 
 type Transaction struct {
@@ -42,7 +39,6 @@ type Transaction struct {
 	ReceiptType            null.String `db:"receipt_type" json:"receipt_type"`
 	PaymentChannel         string      `db:"payment_channel" json:"paymentChannel"` // ENUM: online, in store, other
 	MerchantName           null.String `db:"merchant_name" json:"merchantName"`
-	Categories             SliceString `db:"categories" json:"categories"` // Array, needs to be converted to comma-delimited string going into DB and Slice comming out
 	UnofficialCurrencyCode null.String `db:"unofficial_currency_code" json:"unofficialCurrencyCode"`
 	ISOCurrencyCode        null.String `db:"iso_currency_code" json:"isoCurrencyCode"`
 	Amount                 float64     `db:"amount" json:"amount"`
@@ -56,17 +52,17 @@ type Transaction struct {
 	CreatedAt              time.Time   `db:"created_at" json:"-" diff:"-"`
 	UpdatedAt              time.Time   `db:"updated_at" json:"-" diff:"-"`
 
+	Category    *PlaidCategory          `json:"category" diff:"-"`
 	PaymentMeta *TransactionPaymentMeta `json:"transactionMeta" diff:"-"`
 	Location    *TransactionLocation    `json:"location" diff:"-"`
 }
 
-func (r *Transaction) Filename() (*string, error) {
+func (r *Transaction) Filename() (string, error) {
 	if !r.HasReceipt || !r.ReceiptType.Valid {
-		return nil, fmt.Errorf("transaction does not have a receipt associated with it")
+		return "", fmt.Errorf("transaction does not have a receipt associated with it")
 	}
 
-	a := fmt.Sprintf("%s.%s", r.TransactionID, r.ReceiptType.String)
-	return &a, nil
+	return fmt.Sprintf("%s.%s", r.TransactionID, r.ReceiptType.String), nil
 }
 
 type TransactionCategory struct {
@@ -176,7 +172,6 @@ func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {
 	t.Pending = transaction.Pending
 	t.PaymentChannel = transaction.PaymentChannel
 	t.MerchantName = null.NewString(transaction.MerchantName, transaction.MerchantName != "")
-	t.Categories = SliceString(transaction.Category)
 	t.UnofficialCurrencyCode = null.NewString(transaction.UnofficialCurrencyCode, transaction.UnofficialCurrencyCode != "")
 	t.ISOCurrencyCode = null.NewString(transaction.ISOCurrencyCode, transaction.ISOCurrencyCode != "")
 	t.Amount = transaction.Amount

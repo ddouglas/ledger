@@ -23,3 +23,22 @@ worker: build-backend
 
 tunnel:
 	ngrok http 9000
+
+dbuild:
+	docker build . -t ledger:latest
+
+dcupd:
+	docker-compose up -d
+
+dcdown:
+	docker-compose down
+
+dcdownv:
+	docker-compose down -v
+
+dclogsf:
+	docker-compose logs -f
+
+dcstart: dcupd dclogsf
+
+dcrestart: dcdown dcupd dclogsf
