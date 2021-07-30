@@ -1,0 +1,29 @@
+version: "3.7"
+
+services:
+    api:
+        image: ledger:latest
+        env_file: .config/.env
+        restart: always
+        command: ./ledger server
+        ports:
+            - "55011:55011"
+        networks:
+            - ledger-network
+    worker:
+        image: ledger:latest
+        env_file: .config/.env
+        restart: always
+        command: ./ledger worker
+        networks:
+            - ledger-network
+    redis:
+        image: redis:6.2.5
+        restart: always
+        volumes:
+            - ./_data/redis:/data
+        networks:
+            - ledger-network
+
+networks:
+    ledger-network:

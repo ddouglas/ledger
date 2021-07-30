@@ -2,13 +2,16 @@ package gateway
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/ddouglas/ledger"
+	"github.com/ddouglas/ledger/pkg/mem"
+	"github.com/newrelic/go-agent/v3/newrelic"
+	"github.com/pkg/errors"
 	"github.com/plaid/plaid-go/plaid"
 	"github.com/sirupsen/logrus"
-	"github.com/volatiletech/null"
 )
 
 type Service interface {
@@ -18,6 +21,13 @@ type Service interface {
 	LinkToken(ctx context.Context, user *ledger.User) (string, error)
 	Transactions(ctx context.Context, accessToken string, startDate, endDate time.Time, accountIDs []string) ([]*ledger.Transaction, error)
 	WebhookVerificationKey(ctx context.Context, keyID string) (*plaid.WebhookVerificationKey, error)
+
+	ImportCategories(ctx context.Context)
+	ImportInstitutions(ctx context.Context)
+	PlaidCategory(ctx context.Context, id string) (*ledger.PlaidCategory, error)
+	PlaidInstitution(ctx context.Context, id string) (*ledger.PlaidInstitution, error)
+
+	ledger.PlaidRepository
 }
 
 func New(optFuncs ...configOption) Service {
@@ -29,205 +39,175 @@ func New(optFuncs ...configOption) Service {
 	return s
 }
 
-func (s *service) LinkToken(ctx context.Context, user *ledger.User) (string, error) {
+func (s *service) PlaidCategory(ctx context.Context, id string) (*ledger.PlaidCategory, error) {
+
+	category, err := s.cache.FetchPlaidCategory(ctx, id)
+	if err != nil {
+		return nil, errors.Wrap(err, "[gateway.PlaidCategory]")
+	}
+
+	if category != nil {
+		return category, nil
+	}
+
+	category, err = s.PlaidRepository.PlaidCategory(ctx, id)
+	if err != nil {
+		return nil, errors.Wrap(err, "[gateway.PlaidCategory]")
+	}
+
+	err = s.cache.SavePlaidCategory(ctx, category)
+	if err != nil {
+		return nil, errors.Wrap(err, "[gateway.PlaidCategory]")
+	}
+
+	return category, nil
+
+}
+
+func (s *service) PlaidInstitution(ctx context.Context, id string) (*ledger.PlaidInstitution, error) {
+
+	category, err := s.cache.FetchPlaidInstitution(ctx, id)
+	if err != nil {
+		return nil, errors.Wrap(err, "[gateway.PlaidInstitution]")
+	}
+
+	if category != nil {
+		return category, nil
+	}
+
+	category, err = s.PlaidRepository.PlaidInstitution(ctx, id)
+	if err != nil {
+		return nil, errors.Wrap(err, "[gateway.PlaidInstitution]")
+	}
+
+	err = s.cache.SavePlaidInstitution(ctx, category)
+	if err != nil {
+		return nil, errors.Wrap(err, "[gateway.PlaidInstitution]")
+	}
+
+	return category, nil
+
+}
+
+func (s *service) ImportCategories(ctx context.Context) {
+
+	txn := s.newrelic.StartTransaction("import-plaid-categories")
+	ctx = newrelic.NewContext(ctx, txn)
+	defer txn.End()
 
 	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
 		"service": "gateway",
-		"method":  "LinkToken",
-		"userID":  user.ID,
+		"method":  "ImportCategories",
 	})
-	entry.Info("fetch link token")
+	entry.Info("fetching categories")
 
-	linkConfig := plaid.LinkTokenConfigs{}
-	if len(s.products) > 0 {
-		linkConfig.Products = s.products
-	}
-	if len(s.countryCodes) > 0 {
-		linkConfig.CountryCodes = s.countryCodes
-	}
-	if s.language != nil {
-		linkConfig.Language = *s.language
-	}
-	if s.webhook != nil {
-		linkConfig.Webhook = *s.webhook
-	}
-
-	linkConfig.ClientName = user.Name
-
-	linkConfig.User = &plaid.LinkTokenUser{
-		ClientUserID: user.ID.String(),
-	}
-
-	linkResponse, err := s.client.CreateLinkToken(linkConfig)
+	response, err := s.client.GetCategories()
 	if err != nil {
-		entry.WithError(err).Error("failed to fetch link token")
-		return "", err
+		entry.WithError(err).Errorln("failed to fetch categories from plaid")
+		return
 	}
 
-	entry.Info("token fetched successfully")
-	return linkResponse.LinkToken, nil
+	entry.WithField("count_categories", len(response.Categories))
 
-}
+	for _, plaidCategory := range response.Categories {
 
-func (s *service) WebhookVerificationKey(ctx context.Context, keyID string) (*plaid.WebhookVerificationKey, error) {
-	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
-		"service": "gateway",
-		"method":  "WebhookVerificationKey",
-		"keyID":   keyID,
-	})
-	entry.Info("fetch webhook verification key")
-
-	response, err := s.client.GetWebhookVerificationKey(keyID)
-	if err != nil {
-		entry.WithError(err).Error("failed to fetch webhook verification key")
-		return nil, fmt.Errorf("failed to fetch webhook verification key: %w", err)
-	}
-
-	entry.Info("key fetched successfully")
-	return &response.Key, nil
-
-}
-
-func (s *service) Item(ctx context.Context, accessToken string) (*ledger.Item, error) {
-
-	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
-		"service":            "gateway",
-		"method":             "Item",
-		"accessTokenTrimmed": accessToken[0:8],
-	})
-	entry.Info("fetching item for accessToken")
-
-	response, err := s.client.GetItem(accessToken)
-	if err != nil {
-		entry.WithError(err).Error("failed to fetch item")
-		return nil, fmt.Errorf("failed to fetch item for provided access token: %w", err)
-	}
-
-	plaidItem := response.Item
-	item := &ledger.Item{
-		ItemID:                plaidItem.ItemID,
-		AccessToken:           accessToken,
-		InstitutionID:         null.StringFromPtr(&plaidItem.InstitutionID),
-		Webhook:               null.StringFromPtr(&plaidItem.Webhook),
-		Error:                 null.NewString(plaidItem.Error.Error(), plaidItem.Error.ErrorCode != ""),
-		AvailableProducts:     ledger.SliceString(plaidItem.AvailableProducts),
-		BilledProducts:        ledger.SliceString(plaidItem.BilledProducts),
-		ConsentExpirationTime: null.NewTime(plaidItem.ConsentExpirationTime, !plaidItem.ConsentExpirationTime.IsZero()),
-		ItemStatus:            ledger.ItemStatus(response.Status),
-	}
-
-	entry.Info("item fetched successfully")
-	return item, nil
-
-}
-
-func (s *service) ExchangePublicToken(ctx context.Context, publicToken string) (itemID, accessToken string, err error) {
-
-	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
-		"service":     "gateway",
-		"method":      "ExchangePublicToken",
-		"publicToken": publicToken,
-	})
-	entry.Info("exchanging public token")
-
-	response, err := s.client.ExchangePublicToken(publicToken)
-	if err != nil {
-		entry.WithError(err).Info("failed to exchange public token")
-		return "", "", fmt.Errorf("failed to exchange public token: %w", err)
-	}
-
-	entry.WithField("itemID", response.ItemID).Info("public token exchanged successfully")
-	return response.ItemID, response.AccessToken, nil
-
-}
-
-func (s *service) Transactions(ctx context.Context, accessToken string, startDate, endDate time.Time, accountIDs []string) ([]*ledger.Transaction, error) {
-
-	opts := plaid.GetTransactionsOptions{
-		StartDate: startDate.Format("2006-01-02"),
-		EndDate:   endDate.Format("2006-01-02"),
-		Count:     100,
-	}
-
-	if len(accountIDs) > 0 {
-		opts.AccountIDs = accountIDs
-	}
-
-	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
-		"service": "gateway",
-		"method":  "Transactions",
-		"options": opts,
-	})
-	entry.Info("fetching transactions")
-
-	response, err := s.client.GetTransactionsWithOptions(accessToken, opts)
-	if err != nil {
-		entry.WithError(err).Error("failed to fetch transactions")
-		return nil, fmt.Errorf("failed to fetch transactions: %w", err)
-	}
-
-	plaidTransactions := make([]plaid.Transaction, 0, response.TotalTransactions)
-	plaidTransactions = append(plaidTransactions, response.Transactions...)
-
-	for len(plaidTransactions) < response.TotalTransactions {
-		opts.Offset = len(plaidTransactions)
-		entry := entry.WithField("options", opts)
-		optsResponse, err := s.client.GetTransactionsWithOptions(accessToken, opts)
-		if err != nil {
-			entry.WithError(err).Error("failed to fetch transactions")
-			return nil, fmt.Errorf("failed to fetch transactions with options: %w", err)
+		_, err := s.PlaidRepository.PlaidCategory(ctx, plaidCategory.CategoryID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			entry.WithField("category_id", plaidCategory.CategoryID).WithError(err).Errorln()
+			return
 		}
 
-		plaidTransactions = append(plaidTransactions, optsResponse.Transactions...)
-		entry.WithField("plaidTransactionLength", len(plaidTransactions)).Info()
-		// time.Sleep(time.Millisecond * 500)
+		// Only want to create missing categories
+		if err != nil && errors.Is(err, sql.ErrNoRows) {
+
+			entry.WithField("category_id", plaidCategory.CategoryID).Info("new category detected, creating record in db")
+
+			category := &ledger.PlaidCategory{
+				ID:        plaidCategory.CategoryID,
+				Name:      strings.Join(plaidCategory.Hierarchy, " - "),
+				Group:     plaidCategory.Group,
+				Hierarchy: plaidCategory.Hierarchy,
+			}
+
+			_, err = s.PlaidRepository.CreatePlaidCategory(ctx, category)
+			if err != nil {
+				entry.WithField("category_id", plaidCategory.CategoryID).WithError(err).Errorln()
+				return
+			}
+
+		}
 
 	}
-
-	entry.WithField("plaidTransactionLength", len(plaidTransactions)).Info("transactions fetched successfully")
-
-	var transactions = make([]*ledger.Transaction, 0, len(plaidTransactions))
-
-	for _, plaidTransaction := range plaidTransactions {
-		transaction := new(ledger.Transaction)
-		transaction.FromPlaidTransaction(plaidTransaction)
-		transaction.ItemID = response.Item.ItemID
-
-		// Plaid returns positives as negatives and vise versa. Here we invest it
-		// Withdraws from an account are now negative and Deposits are positive.
-		transaction.Amount = transaction.Amount * -1
-
-		transactions = append(transactions, transaction)
-	}
-
-	return transactions, nil
 
 }
 
-func (s *service) Accounts(ctx context.Context, accessToken string) ([]*ledger.Account, error) {
+func (s *service) ImportInstitutions(ctx context.Context) {
+
+	var txn = s.newrelic.StartTransaction("import-plaid-institutions")
+	ctx = newrelic.NewContext(ctx, txn)
+	defer txn.End()
+
+	var count, offset int = 500, 0
+	var countryCodes = []string{"US"}
 
 	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
-		"service":            "gateway",
-		"method":             "Accounts",
-		"accessTokenTrimmed": accessToken[0:8],
+		"service": "gateway",
+		"method":  "ImportInstitutions",
+		"offset":  offset, "count": count,
 	})
-	entry.Info("fetching accounts for accessToken")
+	entry.Info("fetching institutions")
 
-	response, err := s.client.GetAccounts(accessToken)
+	response, err := s.client.GetInstitutions(count, offset, countryCodes)
 	if err != nil {
-		entry.WithError(err).Error("failed to fetch accounts")
-		return nil, fmt.Errorf("failed to fetch accounts from plaid: %w", err)
+		entry.WithError(err).Errorln("failed to fetch institutions from plaid")
+		return
 	}
 
-	var accounts = make([]*ledger.Account, 0, len(response.Accounts))
-	for _, plaidAccount := range response.Accounts {
-		account := new(ledger.Account)
-		account.FromPlaidAccount(response.Item.ItemID, plaidAccount)
-		accounts = append(accounts, account)
+	plaidInstitutions := append(make([]plaid.Institution, 0, response.Total), response.Institutions...)
 
+	for len(plaidInstitutions) < response.Total {
+		offset = len(plaidInstitutions)
+		entry = entry.WithFields(logrus.Fields{
+			"offset": offset,
+		})
+		entry.Info("fetching institutions")
+		innerResponse, err := s.client.GetInstitutions(count, offset, countryCodes)
+		if err != nil {
+			entry.WithError(err).Errorln("failed to fetch paginated institutions from plaid")
+			return
+		}
+
+		plaidInstitutions = append(plaidInstitutions, innerResponse.Institutions...)
+		entry.WithField("plaidInstitutionsLength", len(plaidInstitutions))
+		mem.PrintMemUsage()
 	}
 
-	entry.Info("accounts fetched successfully")
-	return accounts, nil
+	for _, plaidInstitution := range plaidInstitutions {
+
+		_, err := s.PlaidRepository.PlaidInstitution(ctx, plaidInstitution.ID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			entry.WithError(err).Errorln()
+			return
+		}
+
+		if err != nil && errors.Is(err, sql.ErrNoRows) {
+
+			entry.WithField("institution_id", plaidInstitution.ID).Info("new institution detected, creating record in db")
+
+			institution := &ledger.PlaidInstitution{
+				ID:   plaidInstitution.ID,
+				Name: plaidInstitution.Name,
+			}
+
+			_, err = s.PlaidRepository.CreatePlaidInstitution(ctx, institution)
+			if err != nil {
+				entry.WithError(err).Errorln()
+				return
+			}
+
+		}
+		mem.PrintMemUsage()
+
+	}
 
 }

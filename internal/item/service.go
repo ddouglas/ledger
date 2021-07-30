@@ -49,12 +49,12 @@ func (s *service) ItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*ledge
 		return nil, err
 	}
 
-	institutions, err := s.Institutions(ctx)
+	institutions, err := s.PlaidRepository.PlaidInstitutions(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	mapInstitutions := make(map[string]*ledger.Institution)
+	mapInstitutions := make(map[string]*ledger.PlaidInstitution)
 	for _, institution := range institutions {
 		mapInstitutions[institution.ID] = institution
 	}
@@ -104,7 +104,7 @@ func (s *service) RegisterItem(ctx context.Context, request *ledger.RegisterItem
 		return nil, nil
 	}
 
-	_, err = s.CreateInstitution(ctx, &ledger.Institution{
+	_, err = s.PlaidRepository.CreatePlaidInstitution(ctx, &ledger.PlaidInstitution{
 		ID:   request.Institution.InstitutionID,
 		Name: request.Institution.Name,
 	})

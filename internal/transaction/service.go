@@ -78,7 +78,12 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 					"dateTime":       plaidTransaction.Date,
 					"transaction_id": plaidTransaction.TransactionID,
 				}).Info("no records exist for date, set dateTime to date")
-				plaidTransaction.DateTime.SetValid(plaidTransaction.Date)
+				date := plaidTransaction.Date
+				if date.IsZero() {
+					now := time.Now()
+					date = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+				}
+				plaidTransaction.DateTime.SetValid(date)
 			}
 
 			if err == nil && len(transactions) > 0 {
@@ -88,7 +93,13 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				})
 
 				firstTransForDate := transactions[0]
-				nextTransDatetime := firstTransForDate.DateTime.Time.Add(time.Second)
+				var nextTransDatetime time.Time
+				if firstTransForDate.DateTime.Valid && !firstTransForDate.DateTime.Time.IsZero() {
+					nextTransDatetime = firstTransForDate.DateTime.Time.Add(time.Second)
+				} else {
+					now := time.Now()
+					nextTransDatetime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+				}
 				plaidTransaction.DateTime.SetValid(nextTransDatetime)
 				entry.WithFields(logrus.Fields{
 					"dateTime":       nextTransDatetime,
@@ -189,9 +200,13 @@ func (s *service) TransactionReceiptPresignedURL(ctx context.Context, itemID, tr
 		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] transaction does not have a receipt file associated with it")
 	}
 
+	if len(strings.Split(filename, ".")) != 2 {
+		return "", errors.New("[transaction.TransactionReceiptPresignedURL] unable to determine file name")
+	}
+
 	requestObj := s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    filename,
+		Key:    aws.String(filename),
 	}
 
 	_, err = s.s3.GetObject(ctx, &requestObj)

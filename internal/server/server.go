@@ -74,15 +74,17 @@ func (s *server) buildRouter() *chi.Mux {
 			r.Route("/plaid", func(r chi.Router) {
 				r.Route("/v1", func(r chi.Router) {
 					r.Post("/webhook", s.handlePlaidPostV1Webhook)
+					r.Get("/categories/{categoryID}", s.handlePlaidGetV1Category)
+					r.Get("/institutions/{institutionID}", s.handlePlaidGetV1Institution)
 
 					r.Group(func(r chi.Router) {
 						r.Use(s.authorization)
-
 						r.Get("/link/token", s.handlePlaidGetLinkToken)
 					})
 
 				})
 			})
+
 			r.Route("/auth0", func(r chi.Router) {
 				r.Route("/v1", func(r chi.Router) {
 					r.Post("/login", s.handleAuth0PostEmailExchange)

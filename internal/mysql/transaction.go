@@ -28,7 +28,6 @@ var transactionColumns = []string{
 	"receipt_type",
 	"payment_channel",
 	"merchant_name",
-	"categories",
 	"unofficial_currency_code",
 	"iso_currency_code",
 	"amount",
@@ -108,26 +107,6 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 	return transactions, errors.Wrap(err, "[mysql.TransactionsPaginated]")
 
 }
-func (r *transactionRepository) TransactionDistinctCategories(ctx context.Context, itemID, accountID string, filters *ledger.TransactionFilter) ([]*ledger.TransactionCategory, error) {
-
-	stmt := sq.Select(`DISTINCT category_id, categories as category`, `COUNT(*) as count`).From(transactionsTableName).
-		Where(sq.Eq{
-			"item_id":    itemID,
-			"account_id": accountID,
-		}).
-		OrderBy("count desc").GroupBy(`categories`, `category_id`)
-	stmt = transactionsQueryBuilder(stmt, filters)
-	query, args, err := stmt.ToSql()
-	if err != nil {
-		return nil, errors.Wrap(err, "[mysql.TransactionDistinctCategories]")
-	}
-
-	var transactions = make([]*ledger.TransactionCategory, 0)
-	err = r.db.SelectContext(ctx, &transactions, query, args...)
-
-	return transactions, errors.Wrap(err, "[mysql.TransactionDistinctCategories]")
-
-}
 
 func transactionsQueryBuilder(stmt sq.SelectBuilder, filters *ledger.TransactionFilter) sq.SelectBuilder {
 	if filters != nil {
@@ -181,20 +160,6 @@ func transactionIDSubQuery(transactionID string) squirrel.Sqlizer {
 	return sq.Expr(fmt.Sprintf("datetime < (%s)", sql), args...)
 }
 
-func (r *transactionRepository) TransactionsByTransactionIDs(ctx context.Context, itemID string, transactionIDs []string) ([]*ledger.Transaction, error) {
-
-	query, args, err := sq.Select(transactionColumns...).From(transactionsTableName).Where(sq.Eq{"item_id": itemID, "transaction_id": transactionIDs}).ToSql()
-	if err != nil {
-		return nil, errors.Wrap(err, "[mysql.TransactionsByTransactionIDs]")
-	}
-
-	var transactions = make([]*ledger.Transaction, 0)
-	err = r.db.SelectContext(ctx, &transactions, query, args...)
-
-	return transactions, errors.Wrap(err, "[mysql.TransactionsByTransactionIDs]")
-
-}
-
 func (r *transactionRepository) CreateTransaction(ctx context.Context, transaction *ledger.Transaction) (*ledger.Transaction, error) {
 
 	query, args, err := sq.Insert("transactions").Columns(transactionColumns...).
@@ -210,7 +175,6 @@ func (r *transactionRepository) CreateTransaction(ctx context.Context, transacti
 			transaction.ReceiptType,
 			transaction.PaymentChannel,
 			transaction.MerchantName,
-			transaction.Categories,
 			transaction.UnofficialCurrencyCode,
 			transaction.ISOCurrencyCode,
 			transaction.Amount,
@@ -249,7 +213,6 @@ func (r *transactionRepository) UpdateTransaction(ctx context.Context, transacti
 		Set("receipt_type", transaction.ReceiptType).
 		Set("payment_channel", transaction.PaymentChannel).
 		Set("merchant_name", transaction.MerchantName).
-		Set("categories", transaction.Categories).
 		Set("unofficial_currency_code", transaction.UnofficialCurrencyCode).
 		Set("iso_currency_code", transaction.ISOCurrencyCode).
 		Set("amount", transaction.Amount).

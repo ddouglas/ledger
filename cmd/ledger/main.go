@@ -53,7 +53,7 @@ type core struct {
 type repositories struct {
 	account     ledger.AccountRepository
 	health      ledger.HealthRepository
-	institution ledger.InstitutionRepository
+	plaid       ledger.PlaidRepository
 	item        ledger.ItemRepository
 	transaction ledger.TransactionRepository
 	user        ledger.UserRepository
@@ -81,6 +81,11 @@ func main() {
 			Usage:  "starts the ledger worker, which handles various background tasks such as processing plaid webhooks and sending notifications",
 			Action: actionWorker,
 		},
+		{
+			Name:   "cron",
+			Usage:  "start the plaid cron that importer pladi metadata",
+			Action: actionPlaidCron,
+		},
 		// {
 		// 	Name:   "s3",
 		// 	Action: actionS3Upload,
@@ -95,12 +100,15 @@ func main() {
 }
 
 func buildCore() *core {
+	r := buildRedis()
+	repos := buildRepositories()
+
 	return &core{
 		logger:   logger,
-		redis:    buildRedis(),
+		redis:    r,
 		newrelic: buildNewRelic(),
 		repos:    buildRepositories(),
-		gateway:  buildGateway(),
+		gateway:  buildGateway(r, repos),
 		s3:       buildS3(),
 	}
 }
@@ -209,7 +217,7 @@ func buildRepositories() *repositories {
 	return &repositories{
 		account:     mysql.NewAccountRepository(dbx),
 		health:      mysql.NewHealthRepository(dbx),
-		institution: mysql.NewInstitutionRepository(dbx),
+		plaid:       mysql.NewPlaidRepository(dbx),
 		item:        mysql.NewItemRepository(dbx),
 		transaction: mysql.NewTransactionRepository(dbx),
 		user:        mysql.NewUserRepository(dbx),
@@ -218,7 +226,7 @@ func buildRepositories() *repositories {
 
 }
 
-func buildGateway() gateway.Service {
+func buildGateway(r *redis.Client, repos *repositories) gateway.Service {
 
 	var plaidEnv plaid.Environment
 	switch cfg.Plaid.Environment {
@@ -240,6 +248,8 @@ func buildGateway() gateway.Service {
 		logger.WithError(err).Panic("failed to configure plaid client")
 	}
 
+	cache := cache.New(r)
+
 	return gateway.New(
 		gateway.WithPlaidClient(c),
 		gateway.WithLanguage("en"),
@@ -247,6 +257,8 @@ func buildGateway() gateway.Service {
 		gateway.WithProducts("auth", "transactions"),
 		gateway.WithWebhook(cfg.Plaid.Webhook),
 		gateway.WithLogger(logger),
+		gateway.WithCache(cache),
+		gateway.WithPlaidRepository(repos.plaid),
 	)
 
 }
@@ -279,7 +291,7 @@ func actionAPI(c *cli.Context) error {
 	item := item.New(
 		item.WithAccount(core.repos.account),
 		item.WithGateway(core.gateway),
-		item.WithInstitutionRepository(core.repos.institution),
+		item.WithPlaidRepository(core.repos.plaid),
 		item.WithItemRepository(core.repos.item),
 	)
 
@@ -288,6 +300,7 @@ func actionAPI(c *cli.Context) error {
 		transaction.WithLogger(core.logger),
 		transaction.WithS3(core.s3, cfg.Spaces.Bucket),
 		transaction.WithTransactionRepository(core.repos.transaction),
+		transaction.WithGateway(core.gateway),
 	)
 
 	importer := importer.New(
@@ -298,6 +311,7 @@ func actionAPI(c *cli.Context) error {
 		importer.WithAccounts(accounts),
 		importer.WithItems(item),
 		importer.WithTransactions(transaction),
+		importer.WithWebhookRepository(core.repos.webhook),
 	)
 
 	server := server.New(
@@ -358,13 +372,14 @@ func actionWorker(c *cli.Context) error {
 	item := item.New(
 		item.WithAccount(core.repos.account),
 		item.WithGateway(core.gateway),
-		item.WithInstitutionRepository(core.repos.institution),
+		item.WithPlaidRepository(core.repos.plaid),
 		item.WithItemRepository(core.repos.item),
 	)
 
 	transaction := transaction.New(
 		transaction.WithLogger(core.logger),
 		transaction.WithTransactionRepository(core.repos.transaction),
+		transaction.WithGateway(core.gateway),
 	)
 
 	importer := importer.New(
@@ -382,6 +397,16 @@ func actionWorker(c *cli.Context) error {
 
 	go importer.Run(ctx)
 
+	// cron := cron.New()
+	// cron.AddFunc("@midnight", func() {
+	// 	core.gateway.ImportCategories(ctx)
+	// })
+	// cron.AddFunc("@midnight", func() {
+	// 	core.gateway.ImportInstitutions(ctx)
+	// })
+
+	// cron.Start()
+
 	// Channel to listen for interrupts and to run a graceful shutdown
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
@@ -389,6 +414,16 @@ func actionWorker(c *cli.Context) error {
 	<-osSignals
 	core.logger.Println("starting worker shutdown...")
 	cancel()
+
+	return nil
+
+}
+
+func actionPlaidCron(c *cli.Context) error {
+
+	core := buildCore()
+
+	core.gateway.ImportInstitutions(context.Background())
 
 	return nil
 
