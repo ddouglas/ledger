@@ -19,6 +19,7 @@ func (s *server) handlePlaidPostV1Webhook(w http.ResponseWriter, r *http.Request
 	defer closeRequestBody(ctx, r)
 	err := json.NewDecoder(r.Body).Decode(message)
 	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusInternalServerError, fmt.Errorf("failed to decode request body: %w", err))
 		return
 	}
@@ -26,11 +27,27 @@ func (s *server) handlePlaidPostV1Webhook(w http.ResponseWriter, r *http.Request
 	// publish message to pubsub via importer service
 	err = s.importer.PublishWebhookMessage(ctx, message)
 	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to publish message: %w", err))
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *server) handlePlaidGetV1Categories(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+
+	categories, err := s.gateway.PlaidCategories(ctx)
+	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch category"))
+		return
+	}
+
+	s.writeResponse(ctx, w, http.StatusOK, categories)
+
 }
 
 func (s *server) handlePlaidGetV1Category(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +62,7 @@ func (s *server) handlePlaidGetV1Category(w http.ResponseWriter, r *http.Request
 
 	category, err := s.gateway.PlaidCategory(ctx, categoryID)
 	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch category"))
 		return
 	}
@@ -65,6 +83,7 @@ func (s *server) handlePlaidGetV1Institution(w http.ResponseWriter, r *http.Requ
 
 	institution, err := s.gateway.PlaidInstitution(ctx, institutionID)
 	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch institution"))
 		return
 	}
@@ -81,6 +100,7 @@ func (s *server) handlePlaidGetLinkToken(w http.ResponseWriter, r *http.Request)
 
 	token, err := s.gateway.LinkToken(ctx, user)
 	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch link token from plaid: %w", err))
 		return
 	}

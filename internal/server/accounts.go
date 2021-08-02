@@ -1,9 +1,12 @@
 package server
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ddouglas/ledger"
@@ -355,20 +358,101 @@ func (s *server) handlePostAccountTransactionReceipt(w http.ResponseWriter, r *h
 		return
 	}
 
-	defer closeRequestBody(ctx, r)
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
+	contentLengthStr := r.Header.Get("Content-Length")
+	if contentLengthStr == "" {
+		err := errors.New("headers missing content length, unable to read file")
 		GetLogEntry(r).WithError(err).Error()
-		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to read request body"))
+		s.writeError(ctx, w, http.StatusBadRequest, err)
 		return
 	}
 
-	err = s.transaction.AddReceiptToTransaction(ctx, itemID, transactionID, http.DetectContentType(data), data)
+	contentLength, err := strconv.Atoi(contentLengthStr)
+	if err != nil {
+		err := errors.New("unable to determine content length from header")
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, err)
+		return
+	}
+
+	// ensure the request body gets closed
+	defer closeRequestBody(ctx, r)
+	// Since the request body is base64 encoded, we first need to decode the base64 encoded string to a byte slice
+	buf := new(bytes.Buffer)
+	// content length tells us how long the string is in byte, so lets grow the bytes slice to that length
+	buf.Grow(contentLength)
+	// Now that the memory has been allocated, lets read from the Request Body
+	buf.ReadFrom(r.Body)
+	// Now lets allocate a second buffer. This buffer will hold the base64 decoded data. This should either be an image
+	// or a PDF
+	buf2 := new(bytes.Buffer)
+	buf2.Grow(contentLength)
+
+	// Read the first buffer into the base 64 decoder
+	b64Decoder := base64.NewDecoder(base64.StdEncoding, buf)
+	// Read from the decoder now into our second buffer
+	buf2.ReadFrom(b64Decoder)
+
+	err = s.transaction.AddReceiptToTransaction(ctx, itemID, transactionID, buf2)
 	if err != nil {
 		GetLogEntry(r).WithError(err).Error()
 		s.writeError(ctx, w, http.StatusInternalServerError, errors.New("failed to add file to transaction"))
 		return
 	}
+	s.writeResponse(ctx, w, http.StatusNoContent, nil)
+
+}
+
+func (s *server) handleDeleteAccountTransactionReceipt(w http.ResponseWriter, r *http.Request) {
+
+	var ctx = r.Context()
+	user := internal.UserFromContext(ctx)
+
+	itemID := chi.URLParam(r, "itemID")
+	if itemID == "" {
+		err := errors.New("itemID is required")
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, err)
+		return
+	}
+
+	_, err := s.item.ItemByUserID(ctx, user.ID, itemID)
+	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to verify ownership of item"))
+		return
+	}
+
+	accountID := chi.URLParam(r, "accountID")
+	if accountID == "" {
+		err := errors.New("accountID is required")
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, err)
+		return
+	}
+
+	_, err = s.account.Account(ctx, itemID, accountID)
+	if err != nil {
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to fetch account"))
+		return
+	}
+
+	transactionID := chi.URLParam(r, "transactionID")
+	if transactionID == "" {
+		err := errors.New("transactionID is required")
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, err)
+		return
+	}
+
+	err = s.transaction.RemoveReceiptFromTransaction(ctx, itemID, transactionID)
+	if err != nil {
+		err := errors.New("failed to remove receipt from transaction")
+		GetLogEntry(r).WithError(err).Error()
+		s.writeError(ctx, w, http.StatusBadRequest, err)
+		return
+	}
+
 	s.writeResponse(ctx, w, http.StatusNoContent, nil)
 
 }

@@ -29,18 +29,44 @@ func New(optFuncs ...configOption) Service {
 func (s *service) UserFromToken(ctx context.Context, token jwt.Token) (*ledger.User, error) {
 
 	claims := token.PrivateClaims()
-	if id, ok := claims["https://userID"]; !ok || id.(string) == "" {
-		return nil, fmt.Errorf("required key userID is missing  from token")
+
+	var user *ledger.User
+	var err error
+
+	userIDClaim, userIDok := claims["https://userID"]
+	if userIDok {
+		id, ok := userIDClaim.(string)
+		if !ok {
+			return nil, fmt.Errorf("expected https://userID claim to be string, got %T", userIDClaim)
+		}
+
+		uuidID, err := uuid.FromString(id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse valid uuid from token userID claim: %w", err)
+		}
+
+		user, err = s.User(ctx, uuidID)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to fetch user by userID")
+		}
+
 	}
 
-	userID, err := uuid.FromString(claims["https://userID"].(string))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse uuid: %w", err)
+	emailClaim, emailClaimOk := claims["https://email"]
+	if !userIDok && emailClaimOk {
+		email, ok := emailClaim.(string)
+		if !ok {
+			return nil, fmt.Errorf("expected https://email claim to be stirng, got %T", emailClaim)
+		}
+
+		user, err = s.UserByEmail(ctx, email)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to fetch user by email")
+		}
 	}
 
-	user, err := s.User(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch user for provided userID %s: %w", userID, err)
+	if user == nil {
+		return nil, fmt.Errorf("failed to parse userID nor email claim to valid users")
 	}
 
 	return user, nil

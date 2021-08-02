@@ -68,12 +68,14 @@ func (s *server) buildRouter() *chi.Mux {
 
 			r.Get("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handleGetAccountTransactionReceiptURL)
 			r.Post("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handlePostAccountTransactionReceipt)
+			r.Delete("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handleDeleteAccountTransactionReceipt)
 		})
 
 		r.Route("/external", func(r chi.Router) {
 			r.Route("/plaid", func(r chi.Router) {
 				r.Route("/v1", func(r chi.Router) {
 					r.Post("/webhook", s.handlePlaidPostV1Webhook)
+					r.Get("/categories", s.handlePlaidGetV1Categories)
 					r.Get("/categories/{categoryID}", s.handlePlaidGetV1Category)
 					r.Get("/institutions/{institutionID}", s.handlePlaidGetV1Institution)
 

@@ -11,6 +11,7 @@ import (
 
 type transactionService interface {
 	FetchPresignedURL(ctx context.Context, transactionID string) (string, error)
+	DeletePresignURL(ctx context.Context, transactionID string) error
 	CachePresignedURL(ctx context.Context, transactionID, url string, duration time.Duration) error
 }
 
@@ -30,8 +31,11 @@ func (s *service) FetchPresignedURL(ctx context.Context, transactionID string) (
 }
 
 func (s *service) CachePresignedURL(ctx context.Context, transactionID, url string, duration time.Duration) error {
-
 	_, err := s.client.Set(ctx, presignedURLKeyFunc(transactionID), url, duration).Result()
 	return errors.Wrap(err, "[cache.CachePresignedURL]")
+}
 
+func (s *service) DeletePresignURL(ctx context.Context, transactionID string) error {
+	_, err := s.client.Del(ctx, presignedURLKeyFunc(transactionID)).Result()
+	return errors.Wrap(err, "[cache.DeletePresignURL]")
 }

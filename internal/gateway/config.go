@@ -72,7 +72,9 @@ func WithLanguage(lang string) configOption {
 
 func WithWebhook(hook string) configOption {
 	return func(s *service) {
-		s.webhook = toStringPointer(hook)
+		if hook != "" {
+			s.webhook = toStringPointer(hook)
+		}
 	}
 }
 

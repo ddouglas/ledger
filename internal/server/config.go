@@ -27,7 +27,7 @@ type server struct {
 	user             user.Service
 	account          account.Service
 	item             item.Service
-	transaction      transaction.Service
+	transaction      *transaction.Service
 
 	server *http.Server
 }
@@ -92,7 +92,7 @@ func WithItems(item item.Service) configOption {
 	}
 }
 
-func WithTransactions(transaction transaction.Service) configOption {
+func WithTransactions(transaction *transaction.Service) configOption {
 	return func(s *server) {
 		s.transaction = transaction
 	}

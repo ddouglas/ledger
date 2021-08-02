@@ -11,6 +11,7 @@ type PlaidRepository interface {
 	CreatePlaidInstitution(ctx context.Context, institution *PlaidInstitution) (*PlaidInstitution, error)
 
 	PlaidCategory(ctx context.Context, id string) (*PlaidCategory, error)
+	PlaidCategories(ctx context.Context) ([]*PlaidCategory, error)
 	CreatePlaidCategory(ctx context.Context, category *PlaidCategory) (*PlaidCategory, error)
 }
 

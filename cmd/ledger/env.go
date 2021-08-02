@@ -45,7 +45,7 @@ type config struct {
 		ClientID     string `envconfig:"PLAID_CLIENT_ID" required:"true"`
 		ClientSecret string `envconfig:"PLAID_CLIENT_SECRET" required:"true"`
 		Environment  string `default:"sandbox"`
-		Webhook      string `required:"true"`
+		Webhook      string
 	}
 
 	Spaces struct {

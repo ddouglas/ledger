@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -21,26 +22,26 @@ import (
 	"github.com/ulule/deepcopier"
 )
 
-type Service interface {
-	TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error)
-	AddReceiptToTransaction(ctx context.Context, itemID, transactionID, contentType string, receiptData []byte) error
-	ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error
-	ledger.TransactionRepository
-}
+// type Service interface {
+// 	TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error)
+// 	AddReceiptToTransaction(ctx context.Context, itemID, transactionID, contentType string, receiptData []byte) error
+// 	ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error
+// 	ledger.TransactionRepository
+// }
 
 var allowedFileTypes = []string{
 	"application/pdf", "image/jpeg",
 }
 
-func New(optFuncs ...configOption) Service {
-	s := &service{}
+func New(optFuncs ...configOption) *Service {
+	s := &Service{}
 	for _, optFunc := range optFuncs {
 		optFunc(s)
 	}
 	return s
 }
 
-func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error {
+func (s *Service) ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error {
 
 	for _, plaidTransaction := range newTrans {
 
@@ -179,7 +180,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 }
 
-func (s *service) TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error) {
+func (s *Service) TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error) {
 
 	urlStr, err := s.cache.FetchPresignedURL(ctx, transactionID)
 	if err != nil {
@@ -232,13 +233,14 @@ func (s *service) TransactionReceiptPresignedURL(ctx context.Context, itemID, tr
 
 }
 
-func (s *service) AddReceiptToTransaction(ctx context.Context, itemID, transactionID, contentType string, receiptData []byte) error {
+func (s *Service) AddReceiptToTransaction(ctx context.Context, itemID, transactionID string, buffer *bytes.Buffer) error {
 
 	transaction, err := s.Transaction(ctx, itemID, transactionID)
 	if err != nil {
 		return errors.Wrap(err, "[transaction.AddReceiptToTransaction] failed to fetch transaction")
 	}
 
+	contentType := http.DetectContentType(buffer.Bytes())
 	err = validateContentType(contentType)
 	if err != nil {
 		return err
@@ -247,18 +249,15 @@ func (s *service) AddReceiptToTransaction(ctx context.Context, itemID, transacti
 	var ext string
 	switch contentType {
 	case "application/pdf":
-		ext = ".pdf"
+		ext = "pdf"
 	case "image/jpeg":
 		ext = "jpg"
-
 	}
-
-	reader := bytes.NewReader(receiptData)
 
 	obj := s3.PutObjectInput{
 		Bucket:      aws.String(s.bucket),
 		Key:         aws.String(fmt.Sprintf("%s.%s", transaction.TransactionID, ext)),
-		Body:        reader,
+		Body:        bytes.NewReader(buffer.Bytes()),
 		ContentType: aws.String(contentType),
 	}
 
@@ -278,6 +277,45 @@ func (s *service) AddReceiptToTransaction(ctx context.Context, itemID, transacti
 	return nil
 
 }
+
+func (s *Service) RemoveReceiptFromTransaction(ctx context.Context, itemID, transactionID string) error {
+
+	transaction, err := s.Transaction(ctx, itemID, transactionID)
+	if err != nil {
+		return errors.Wrap(err, "[transaction.RemoveReceiptFromTransaction] failed to fetch transaction")
+	}
+
+	if !transaction.HasReceipt {
+		return nil
+	}
+
+	input := s3.DeleteObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(fmt.Sprintf("%s.%s", transaction.TransactionID, transaction.ReceiptType.String)),
+	}
+
+	_, err = s.s3.DeleteObject(ctx, &input)
+	if err != nil {
+		return errors.Wrap(err, "[transaction.RemoveReceiptFromTransaction] failed to delete transaction with S3")
+	}
+
+	err = s.cache.DeletePresignURL(ctx, transactionID)
+	if err != nil {
+		return errors.Wrap(err, "[transaction.RemoveReceiptFromTransaction] failed to delete transaction in Cache")
+	}
+
+	transaction.HasReceipt = false
+	transaction.ReceiptType = null.NewString("", false)
+
+	_, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
+	if err != nil {
+		return errors.Wrap(err, "[transaction.AddReceiptToTransaction] failed to update has_receipt flag on transaction")
+	}
+
+	return nil
+
+}
+
 func validateContentType(contentType string) error {
 	if contentType == "application/octet-stream" {
 		return errors.New("unable to correctly determine content type from data format")

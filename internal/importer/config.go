@@ -16,7 +16,7 @@ type configOption func(s *service)
 type service struct {
 	account     account.Service
 	item        item.Service
-	transaction transaction.Service
+	transaction *transaction.Service
 
 	redis    *redis.Client
 	gateway  gateway.Service
@@ -68,7 +68,7 @@ func WithItems(item item.Service) configOption {
 	}
 }
 
-func WithTransactions(transaction transaction.Service) configOption {
+func WithTransactions(transaction *transaction.Service) configOption {
 	return func(s *service) {
 		s.transaction = transaction
 	}

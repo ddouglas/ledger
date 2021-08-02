@@ -35,7 +35,7 @@ func (r *plaidRepository) PlaidCategory(ctx context.Context, id string) (*ledger
 		"id": id,
 	}).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate query: %w", err)
+		return nil, errors.Wrap(err, "[PlaidCategory]")
 	}
 
 	var category = new(ledger.PlaidCategory)
@@ -44,6 +44,19 @@ func (r *plaidRepository) PlaidCategory(ctx context.Context, id string) (*ledger
 	return category, errors.Wrap(err, "[PlaidCategory]")
 
 }
+
+func (r *plaidRepository) PlaidCategories(ctx context.Context) ([]*ledger.PlaidCategory, error) {
+	query, args, err := sq.Select(plaidCategoryColumns...).From(plaidCategoriesTable).ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "[PlaidCategories]")
+	}
+
+	var categories = make([]*ledger.PlaidCategory, 0)
+	err = r.db.SelectContext(ctx, &categories, query, args...)
+
+	return categories, errors.Wrap(err, "[PlaidCategories]")
+}
+
 func (r *plaidRepository) CreatePlaidCategory(ctx context.Context, category *ledger.PlaidCategory) (*ledger.PlaidCategory, error) {
 
 	query, args, err := sq.Insert(plaidCategoriesTable).Columns(plaidCategoryColumns...).Values(

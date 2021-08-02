@@ -36,7 +36,7 @@ type Transaction struct {
 	Name                   string      `db:"name" json:"name"`
 	Pending                bool        `db:"pending" json:"pending"`
 	HasReceipt             bool        `db:"has_receipt" json:"hasReceipt"`
-	ReceiptType            null.String `db:"receipt_type" json:"receipt_type"`
+	ReceiptType            null.String `db:"receipt_type" json:"receiptType"`
 	PaymentChannel         string      `db:"payment_channel" json:"paymentChannel"` // ENUM: online, in store, other
 	MerchantName           null.String `db:"merchant_name" json:"merchantName"`
 	UnofficialCurrencyCode null.String `db:"unofficial_currency_code" json:"unofficialCurrencyCode"`
