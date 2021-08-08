@@ -4,3 +4,4 @@ logs/
 cmd/ledger/__debug_bin
 .data
 assets/
+.terraform/.terraform/

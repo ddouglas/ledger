@@ -12,7 +12,7 @@ build-backend:
 	clear
 
 server: build-backend
-	./.build/ledger server
+	aws-vault exec ledger-api-admin -- chamber exec ledger-api/development -- ./.build/ledger server
 
 worker: build-backend
 	./.build/ledger worker

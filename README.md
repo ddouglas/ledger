@@ -53,3 +53,11 @@ SPACES_CLIENT_SECRET=
 SPACES_ENDPOINT=https://nyc3.digitaloceanspaces.com
 SPACES_BUCKET=
 ```
+
+## Running the Application
+
+Whilst the above can be provided as a `.env` file to the application, for the sake of my curiousity, I leveraged Terraform to setup AWS IAM users for development and wrote all of the envs to SSM. The application does not natively pull from SSM, but you can use AWS Vault and Chamber to inject SSM secrets into the env so that no application secrets are stored on the dev machine. Please follow the documentation on those various applications documentation portal for instructions on how to set them up. The Terraform code has been included in the .terrform directory and the following command is now the default method of the launching the application using the Makefile. Please note, to AWS Vault prompts for a password to unlock the secrets file. During development, I store the password in a local env called `AWS_VAULT_FILE_PASSPHRASE` so that I don't constantly have to type this in. the env is not exported in any `*rc` files and it is recommended not to export this variable by default.
+
+```
+aws-vault exec ledger-api-admin -- chamber exec ledger-api/development -- go run cmd/ledger/*.go server
+```
