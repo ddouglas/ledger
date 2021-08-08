@@ -59,13 +59,7 @@ func buildLogger() {
 	})
 
 	logger.SetLevel(level)
-	// logger.SetFormatter(&logrus.TextFormatter{
-	// 	FullTimestamp: true,
-	// })
 	logrus.SetFormatter(nrlogrusplugin.ContextFormatter{})
-
-	// if cfg.Env == "production" {
-	// }
 
 }
 

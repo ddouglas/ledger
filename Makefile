@@ -15,10 +15,7 @@ server: build-backend
 	aws-vault exec ledger-api-admin -- chamber exec ledger-api/development -- ./.build/ledger server
 
 worker: build-backend
-	./.build/ledger worker
-
-tunnel:
-	ngrok http 9000
+	aws-vault exec ledger-api-admin -- chamber exec ledger-api/development -- ./.build/ledger worker
 
 dbuild:
 	docker build . -t ledger:latest

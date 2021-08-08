@@ -10,11 +10,12 @@ import (
 type config struct {
 	Env   string `default:"development"`
 	MySQL struct {
-		Host string `required:"true"`
-		Port uint   `required:"true"`
-		User string `required:"true"`
-		Pass string `required:"true"`
-		DB   string `required:"true"`
+		Host    string `required:"true"`
+		Port    uint   `required:"true"`
+		User    string `required:"true"`
+		Pass    string `required:"true"`
+		DB      string `required:"true"`
+		Migrate bool
 	}
 
 	Redis struct {

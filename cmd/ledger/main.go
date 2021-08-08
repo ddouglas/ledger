@@ -29,6 +29,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/plaid/plaid-go/plaid"
+	"github.com/robfig/cron/v3"
 
 	driver "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -39,6 +40,7 @@ import (
 var (
 	cfg    *config
 	logger *logrus.Logger
+	dbx    *sqlx.DB
 )
 
 type core struct {
@@ -53,8 +55,9 @@ type core struct {
 type repositories struct {
 	account     ledger.AccountRepository
 	health      ledger.HealthRepository
-	plaid       ledger.PlaidRepository
 	item        ledger.ItemRepository
+	migrations  ledger.MigrationRepository
+	plaid       ledger.PlaidRepository
 	transaction ledger.TransactionRepository
 	user        ledger.UserRepository
 	webhook     ledger.WebhookRepository
@@ -82,19 +85,28 @@ func main() {
 			Action: actionWorker,
 		},
 		{
-			Name:   "cron",
-			Usage:  "start the plaid cron that importer pladi metadata",
-			Action: actionPlaidCron,
+			Name:  "migrate",
+			Usage: "Manage Application DB Migrations",
+			Subcommands: []*cli.Command{
+				{
+					Name:   "create",
+					Usage:  "create a new migration",
+					Action: actionCreateMigration,
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:     "name",
+							Required: true,
+							Usage:    "the name of the migration. Filename with be ${datetime}_${name}.sql",
+						},
+					},
+				},
+			},
 		},
-		// {
-		// 	Name:   "s3",
-		// 	Action: actionS3Upload,
-		// },
 	}
 
 	err := app.Run(os.Args)
 	if err != nil {
-		panic(err)
+		logger.WithError(err).Fatal("failed to initialize cli")
 	}
 
 }
@@ -212,13 +224,14 @@ func buildRepositories() *repositories {
 		log.Panicf("[MySQL Connect] Failed to ping mysql server: %s", err)
 	}
 
-	dbx := sqlx.NewDb(db, "mysql")
+	dbx = sqlx.NewDb(db, "mysql")
 
 	return &repositories{
 		account:     mysql.NewAccountRepository(dbx),
 		health:      mysql.NewHealthRepository(dbx),
-		plaid:       mysql.NewPlaidRepository(dbx),
 		item:        mysql.NewItemRepository(dbx),
+		migrations:  mysql.NewMigrationRepostory(dbx),
+		plaid:       mysql.NewPlaidRepository(dbx),
 		transaction: mysql.NewTransactionRepository(dbx),
 		user:        mysql.NewUserRepository(dbx),
 		webhook:     mysql.NewWebhookRepository(dbx),
@@ -266,6 +279,11 @@ func buildGateway(r *redis.Client, repos *repositories) gateway.Service {
 func actionAPI(c *cli.Context) error {
 
 	core := buildCore()
+
+	if cfg.MySQL.Migrate {
+		runMigrations(core)
+	}
+
 	client := &http.Client{
 		Transport: newrelic.NewRoundTripper(nil),
 	}
@@ -395,22 +413,34 @@ func actionWorker(c *cli.Context) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	crn := cron.New()
+	id, err := crn.AddFunc("@midnight", func() {
+		core.gateway.ImportCategories(ctx)
+	})
+	if err != nil {
+		core.logger.WithError(err).Fatal("failed to add import categories job to cron scheduler. exiting go routing")
+	}
+	core.logger.WithField("id", id).Debug("successfully added import categories job to cron scheduler")
+
+	id, err = crn.AddFunc("@midnight", func() {
+		core.gateway.ImportInstitutions(ctx)
+	})
+	if err != nil {
+		core.logger.WithError(err).Fatal("failed to add import institutions job to cron scheduler. exiting go routing")
+	}
+	core.logger.WithField("id", id).Debug("successfully added import institutions job to cron scheduler")
+
+	core.logger.Info("starting cron...")
+	crn.Start()
+
+	core.logger.Info("starting importer...")
 	go importer.Run(ctx)
-
-	// cron := cron.New()
-	// cron.AddFunc("@midnight", func() {
-	// 	core.gateway.ImportCategories(ctx)
-	// })
-	// cron.AddFunc("@midnight", func() {
-	// 	core.gateway.ImportInstitutions(ctx)
-	// })
-
-	// cron.Start()
 
 	// Channel to listen for interrupts and to run a graceful shutdown
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
 
+	core.logger.Info("worker processes launched successfully")
 	<-osSignals
 	core.logger.Println("starting worker shutdown...")
 	cancel()
@@ -418,69 +448,3 @@ func actionWorker(c *cli.Context) error {
 	return nil
 
 }
-
-func actionPlaidCron(c *cli.Context) error {
-
-	core := buildCore()
-
-	core.gateway.ImportInstitutions(context.Background())
-
-	return nil
-
-}
-
-// func actionS3Upload(c *cli.Context) error {
-
-// 	var ctx = context.Background()
-
-// 	core := buildCore()
-
-// 	// file, err := os.Open("assets/example.jpg")
-// 	// if err != nil {
-// 	// 	core.logger.WithError(err).Fatal("failed to open example file")
-// 	// }
-
-// 	// defer file.Close()
-
-// 	// obj := s3.PutObjectInput{
-// 	// 	Bucket:      aws.String("onetwentyseven"),
-// 	// 	Key:         aws.String("example.jpg"),
-// 	// 	Body:        file,
-// 	// 	ContentType: aws.String("image/jpeg"),
-// 	// }
-
-// 	// _, err = core.s3.PutObject(context.Background(), &obj)
-// 	// if err != nil {
-// 	// 	core.logger.WithError(err).Fatal("failed to upload file")
-// 	// }
-
-// 	// input := &s3.GetObjectInput{
-// 	// 	Bucket: aws.String("onetwentyseven"),
-// 	// 	Key:    aws.String("example.jpg"),
-// 	// }
-
-// 	// file, err := core.s3.GetObject(ctx, input)
-// 	// if err != nil {
-// 	// 	core.logger.WithError(err).Fatal("failed to fetch file")
-// 	// }
-
-// 	// data, err := io.ReadAll(file.Body)
-// 	// if err != nil {
-// 	// 	core.logger.WithError(err).Fatal("failed to read file")
-// 	// }
-
-// 	// newFile, _ := os.Create("example2.jpg")
-// 	// newFile.Write(data)
-// 	// newFile.Close()
-
-// 	// presignClient := s3.NewPresignClient(core.s3)
-
-// 	// req, err := presignClient.PresignGetObject(ctx, input)
-// 	// if err != nil {
-// 	// 	core.logger.WithError(err).Fatal("failed to fetch presigned url")
-// 	// }
-
-// 	// fmt.Println(req.SignedHeader)
-
-// 	return nil
-// }

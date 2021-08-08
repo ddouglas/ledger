@@ -21,9 +21,15 @@ services:
         image: redis:6.2.5
         restart: always
         volumes:
-            - ./_data/redis:/data
+            - ./.data/redis:/data
         networks:
             - ledger-network
 
+    mysql:
+        image: mysql:5.7.33
+        restart: always
+        volumes:
+            - ./.data/mysql:/var/lib/mysql
+            - ./.config/mysql/ledger.conf:/etc/mysql/ledger.conf
 networks:
     ledger-network:
