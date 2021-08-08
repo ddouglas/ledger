@@ -1,9 +1,5 @@
 SHELL := /bin/bash
 
-run:
-	$(MAKE) -j2 ui backend
-
-
 ui:
 	source ./frontend/.env && npm --prefix ./frontend run build --watch
 

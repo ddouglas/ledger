@@ -32,12 +32,24 @@ AUTH0_JWKSURI=""
 AUTH0_TENANT=
 AUTH0_REDIRECTURI=
 
-# This is just a randomly generated string. It is used by as a secret on an Auth0 Action that I've copied into the .auth0 folder
-AUTH0_SERVERTOKEN=
-
+# Plaid Environment must be one of sandbox, development, or production
+PLAID_ENVIRONMENT=
 PLAID_CLIENT_ID=
 PLAID_CLIENT_SECRET=
+# Plaid Webhook is the base uri that webhook will be received at. The path is hard coded to api/external/plaid/v1/webhook
+PLAID_WEBHOOK=https://ledger.onetwentyseven.dev
 
-# This is user provided, it is the endpoint on this API that Plaid will hit when specific event such has a users registration or new transactions are detected
-PLAID_WEBHOOK=
+# This application has minor support for NewRelic. This will be expanded in the future.
+# All Environment variables are documented by the newrelic go-agent. Please review that packages document for information on which envs can be provided. As of the development of this API, the following are used
+NEW_RELIC_ENABLED=
+NEW_RELIC_APP_NAME=
+NEW_RELIC_LICENSE_KEY=
+NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=
+
+# Receipts for transaction that are uploaded by the users are stored in Digital Ocean spaces. This will probably be converted to S3 later on down the road. The following should be provided to configure the S3 Package that is used to write to DO Spaces. DO Spaces hosts an S3 compatable API, which allows us to use the AWS SDK to interact with the API
+
+SPACES_CLIENT_ID=
+SPACES_CLIENT_SECRET=
+SPACES_ENDPOINT=https://nyc3.digitaloceanspaces.com
+SPACES_BUCKET=
 ```
