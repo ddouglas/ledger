@@ -32,14 +32,13 @@ type config struct {
 	}
 
 	Auth0 struct {
-		ClientID     string `required:"true"`
-		ClientSecret string `required:"true"`
+		ClientID     string `envconfig:"AUTH0_CLIENT_ID" required:"true"`
+		ClientSecret string `envconfig:"AUTH0_CLIENT_SECRET" required:"true"`
 		RedirectURI  string `required:"true"`
 		Audience     string `required:"true"`
 		Issuer       string `required:"true"`
 		Tenant       string `required:"true"`
 		JWKSURI      string `required:"true"`
-		ServerToken  string `required:"true"`
 	}
 
 	Plaid struct {

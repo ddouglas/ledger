@@ -7,6 +7,8 @@ import (
 
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
+	"github.com/ddouglas/ledger/internal/account"
+	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
 )
@@ -15,13 +17,30 @@ type Service interface {
 	ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, itemID string) ([]*ledger.Account, error)
 	RegisterItem(ctx context.Context, request *ledger.RegisterItemRequest) (*ledger.Item, error)
 	ledger.ItemRepository
+	ledger.PlaidRepository
 }
 
-func New(optFuncs ...configOption) Service {
-	s := &service{}
-	for _, optFunc := range optFuncs {
-		optFunc(s)
+type service struct {
+	gateway gateway.Service
+	account account.Service
+
+	ledger.ItemRepository
+	ledger.PlaidRepository
+}
+
+func New(
+	account account.Service,
+	gateway gateway.Service,
+	item ledger.ItemRepository,
+	plaid ledger.PlaidRepository,
+) Service {
+	s := &service{
+		ItemRepository:  item,
+		PlaidRepository: plaid,
+		gateway:         gateway,
+		account:         account,
 	}
+
 	return s
 }
 
@@ -39,36 +58,6 @@ func (s *service) ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, it
 	}
 
 	return accounts, nil
-
-}
-
-func (s *service) ItemsByUserID(ctx context.Context, userID uuid.UUID) ([]*ledger.Item, error) {
-
-	items, err := s.ItemRepository.ItemsByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	institutions, err := s.PlaidRepository.PlaidInstitutions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	mapInstitutions := make(map[string]*ledger.PlaidInstitution)
-	for _, institution := range institutions {
-		mapInstitutions[institution.ID] = institution
-	}
-
-	for _, item := range items {
-		if !item.InstitutionID.Valid {
-			continue
-		}
-		if institution, ok := mapInstitutions[item.InstitutionID.String]; ok {
-			item.Institution = institution
-		}
-	}
-
-	return items, nil
 
 }
 

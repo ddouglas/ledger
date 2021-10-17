@@ -1,0 +1,72 @@
+# Where are all the schema files located? globs are supported eg  src/**/*.graphqls
+schema:
+    - internal/server/gql/*.graphqls
+
+# Where should the generated server code go?
+exec:
+    filename: internal/server/gql/generated/generated.go
+    package: generated
+
+# Uncomment to enable federation
+# federation:
+#   filename: graph/generated/federation.go
+#   package: generated
+
+# Where should any generated models go?
+model:
+    filename: internal/server/gql/model/models_gen.go
+    package: model
+
+# Where should the resolver implementations go?
+resolver:
+    layout: follow-schema
+    dir: internal/server/gql
+    package: resolvers
+
+# Optional: turn on use `gqlgen:"fieldName"` tags in your models
+# struct_tag: json
+
+# Optional: turn on to use []Thing instead of []*Thing
+# omit_slice_element_pointers: false
+
+# Optional: set to speed up generation time by not performing a final validation pass.
+skip_validation: true
+
+# gqlgen will search for any type names in the schema in these go packages
+# if they match it will use them, otherwise it will generate them.
+autobind:
+    - "github.com/ddouglas/ledger/internal/server/gql/graph/model"
+
+# This section declares type mapping between the GraphQL and go type systems
+#
+# The first line in each type will be used as defaults for resolver arguments and
+# modelgen, the others will be allowed when binding to fields. Configure them to
+# your liking
+models:
+    Int:
+        model:
+            - github.com/99designs/gqlgen/graphql.Int
+            - github.com/99designs/gqlgen/graphql.Int64
+            - github.com/99designs/gqlgen/graphql.Int32
+    Float:
+        model:
+            - github.com/ddouglas/ledger/internal/server/gql/scalar.Float32
+            - github.com/ddouglas/ledger/internal/server/gql/scalar.Float64
+            - github.com/ddouglas/ledger/internal/server/gql/scalar/null.Float32
+            - github.com/ddouglas/ledger/internal/server/gql/scalar/null.Float64
+    Uint:
+        model:
+            - github.com/ddouglas/ledger/internal/server/gql/scalar.Uint
+            - github.com/ddouglas/ledger/internal/server/gql/scalar/null.Uint
+    Uint64:
+        model:
+            - github.com/ddouglas/ledger/internal/server/gql/scalar.Uint64
+            - github.com/ddouglas/ledger/internal/server/gql/scalar/null.Uint64
+    String:
+        model:
+            - github.com/99designs/gqlgen/graphql.String
+            - github.com/ddouglas/ledger/internal/server/gql/scalar/null.String
+    Time:
+        model:
+            - github.com/99designs/gqlgen/graphql.Time
+            - github.com/ddouglas/ledger/internal/server/gql/scalar/null.Time

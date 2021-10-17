@@ -16,7 +16,7 @@ type transactionService interface {
 }
 
 func presignedURLKeyFunc(transactionID string) string {
-	return fmt.Sprintf("ledger::preseignedReceiptURLs::%s", transactionID)
+	return fmt.Sprintf("ledger::presignedReceiptURLs::%s", transactionID)
 }
 
 func (s *service) FetchPresignedURL(ctx context.Context, transactionID string) (string, error) {

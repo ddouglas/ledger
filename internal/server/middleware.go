@@ -29,6 +29,15 @@ func (s *server) cors(next http.Handler) http.Handler {
 	})
 }
 
+// Cors middleware to allow frontend consumption
+func (s *server) noRobots(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Robots-Tag", "noindex")
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *server) authorization(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -41,12 +50,11 @@ func (s *server) authorization(next http.Handler) http.Handler {
 		}
 
 		var prefixes = []string{`bearer `, `Bearer `}
-		var tokenStr string
 		for _, prefix := range prefixes {
-			tokenStr = strings.TrimPrefix(authHeader, prefix)
+			authHeader = strings.TrimPrefix(authHeader, prefix)
 		}
 
-		token, err := s.auth.ValidateToken(ctx, tokenStr)
+		token, err := s.auth.ValidateToken(ctx, authHeader)
 		if err != nil {
 			s.writeError(ctx, w, http.StatusUnauthorized, fmt.Errorf("failed to validate token: %w", err))
 			return

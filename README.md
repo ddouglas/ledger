@@ -4,7 +4,7 @@
 
 Ledger is an application I am building in an effort to help better understand where my money is spent. I've alway been aware of how much money I've had in my account and how much was available to spend, when bills were due and ensure that they were paid, but outside of that, i'm not sure where my money goes. How much money have I spent at a specific consumer? How much money have I spent on rent? These are the questions I'll be looking to answer with this application
 
-Ledger leverages [Auth0](https://auth0.com) for authentication and [Plaid](https://plaid.com) for interfacing with my banking institution. Since I only back with a single institution, this will most likely be the crux of this application and the hardest to code for the masses. There a few gotchu's with the Plaid API that my institution does not fall into, so I will not suffer with them.
+Ledger leverages [Auth0](https://auth0.com) for authentication and [Plaid](https://plaid.com) for interfacing with my banking institution. Since I only bank with a single institution, this will most likely be the crux of this application and the hardest to code for the masses. There a few gotchu's with the Plaid API that my institution does not fall into, so I will not suffer with them.
 
 ## Configuration
 

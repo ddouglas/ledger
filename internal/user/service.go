@@ -18,12 +18,11 @@ type Service interface {
 	ledger.UserRepository
 }
 
-func New(optFuncs ...configOption) Service {
-	s := &service{}
-	for _, optFunc := range optFuncs {
-		optFunc(s)
+func New(user ledger.UserRepository) Service {
+	return &service{
+		UserRepository: user,
 	}
-	return s
+
 }
 
 func (s *service) UserFromToken(ctx context.Context, token jwt.Token) (*ledger.User, error) {

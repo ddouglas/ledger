@@ -5,3 +5,4 @@ cmd/ledger/__debug_bin
 .data
 assets/
 .terraform/.terraform/
+.config/mysql/.env

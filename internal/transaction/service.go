@@ -17,36 +17,59 @@ import (
 	"github.com/volatiletech/null"
 
 	"github.com/ddouglas/ledger"
+	"github.com/ddouglas/ledger/internal/cache"
+	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/r3labs/diff"
 	"github.com/sirupsen/logrus"
 	"github.com/ulule/deepcopier"
 )
 
-// type Service interface {
-// 	TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error)
-// 	AddReceiptToTransaction(ctx context.Context, itemID, transactionID, contentType string, receiptData []byte) error
-// 	ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error
-// 	ledger.TransactionRepository
-// }
+type Service interface {
+	ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error
+	TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error)
+	AddReceiptToTransaction(ctx context.Context, itemID, transactionID string, buffer *bytes.Buffer) error
+	RemoveReceiptFromTransaction(ctx context.Context, itemID, transactionID string) error
+	ledger.TransactionRepository
+}
+
+type service struct {
+	logger  *logrus.Logger
+	cache   cache.Service
+	s3      *s3.Client
+	gateway gateway.Service
+	bucket  string
+
+	ledger.TransactionRepository
+}
 
 var allowedFileTypes = []string{
 	"application/pdf", "image/jpeg",
 }
 
-func New(optFuncs ...configOption) *Service {
-	s := &Service{}
-	for _, optFunc := range optFuncs {
-		optFunc(s)
+func New(
+	s3 *s3.Client,
+	logger *logrus.Logger,
+	gateway gateway.Service,
+	cache cache.Service,
+	bucket string,
+	transaction ledger.TransactionRepository,
+) Service {
+	return &service{
+		gateway:               gateway,
+		cache:                 cache,
+		s3:                    s3,
+		bucket:                bucket,
+		TransactionRepository: transaction,
+		logger:                logger,
 	}
-	return s
+
 }
 
-func (s *Service) ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error {
+func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error {
 
 	for _, plaidTransaction := range newTrans {
 
-		entry := s.logger.WithContext(ctx)
-		entry = entry.WithFields(logrus.Fields{
+		entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
 			"id":   plaidTransaction.TransactionID,
 			"date": plaidTransaction.Date.Format("2006-01-02"),
 		})
@@ -55,23 +78,22 @@ func (s *Service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		transaction, err := s.Transaction(ctx, item.ItemID, plaidTransaction.TransactionID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			entry.WithError(err).Error()
-			return fmt.Errorf("failed to fetch transactions from DB")
+			return errors.New("failed to fetch transactions from DB")
 		}
 
 		if errors.Is(err, sql.ErrNoRows) {
 
 			entry.Info("new transaction detected, fetching records for date")
 			filters := &ledger.TransactionFilter{
-				OnDate: null.NewTime(plaidTransaction.Date, true),
+				OnDate: null.TimeFrom(plaidTransaction.Date),
 			}
 			transactions, err := s.TransactionsPaginated(ctx, item.ItemID, plaidTransaction.AccountID, filters)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				entry.WithError(err).Error()
-				return fmt.Errorf("failed to fetch transactions from DB")
+				return errors.New("failed to fetch transactions from DB")
 			}
 
-			entry = entry.WithField("count", len(transactions))
-			entry = entry.WithError(err)
+			entry = entry.WithField("count", len(transactions)).WithError(err)
 			plaidTransaction.ItemID = item.ItemID
 
 			if err != nil && errors.Is(err, sql.ErrNoRows) || len(transactions) == 0 {
@@ -111,7 +133,7 @@ func (s *Service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			_, err = s.CreateTransaction(ctx, plaidTransaction)
 			if err != nil {
 				entry.WithError(err).Error()
-				return fmt.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
+				return errors.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
 			}
 			entry.Info("transaction created successfully")
 
@@ -122,7 +144,7 @@ func (s *Service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				pendingTransaction, err := s.Transaction(ctx, plaidTransaction.ItemID, plaidTransaction.PendingTransactionID.String)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
 					entry.WithError(err).Error()
-					return fmt.Errorf("unexpected error encountered querying for transactions, please check logs")
+					return errors.New("unexpected error encountered querying for transactions, please check logs")
 				}
 
 				if err != nil && errors.Is(err, sql.ErrNoRows) {
@@ -134,7 +156,7 @@ func (s *Service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 				_, err = s.UpdateTransaction(ctx, pendingTransaction.TransactionID, pendingTransaction)
 				if err != nil {
 					entry.WithError(err).Error()
-					return fmt.Errorf("failed to update transaction %s", pendingTransaction.TransactionID)
+					return errors.Errorf("failed to update transaction %s", pendingTransaction.TransactionID)
 				}
 
 			}
@@ -153,7 +175,7 @@ func (s *Service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		changelog, err := diff.Diff(transaction, plaidTransaction)
 		if err != nil {
 			entry.WithError(err).Error()
-			return fmt.Errorf("unable to determine updated attributes of transaction")
+			return errors.New("unable to determine updated attributes of transaction")
 		}
 
 		if len(changelog) == 0 {
@@ -166,13 +188,13 @@ func (s *Service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 		err = deepcopier.Copy(plaidTransaction).To(transaction)
 		if err != nil {
 			entry.WithError(err).Error()
-			return fmt.Errorf("failed to copy plaidTransaction to ledgerTransaction")
+			return errors.Errorf("failed to copy plaidTransaction to ledgerTransaction")
 		}
 
 		_, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
 		if err != nil {
 			entry.WithError(err).Error()
-			return fmt.Errorf("failed to update transaction %s", transaction.TransactionID)
+			return errors.Errorf("failed to update transaction %s", transaction.TransactionID)
 		}
 	}
 
@@ -180,7 +202,7 @@ func (s *Service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 }
 
-func (s *Service) TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error) {
+func (s *service) TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error) {
 
 	urlStr, err := s.cache.FetchPresignedURL(ctx, transactionID)
 	if err != nil {
@@ -205,12 +227,10 @@ func (s *Service) TransactionReceiptPresignedURL(ctx context.Context, itemID, tr
 		return "", errors.New("[transaction.TransactionReceiptPresignedURL] unable to determine file name")
 	}
 
-	requestObj := s3.GetObjectInput{
+	_, err = s.s3.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(filename),
-	}
-
-	_, err = s.s3.GetObject(ctx, &requestObj)
+	})
 	if err != nil {
 		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to fetch receipt from object store")
 	}
@@ -219,7 +239,10 @@ func (s *Service) TransactionReceiptPresignedURL(ctx context.Context, itemID, tr
 
 	expireDuration := time.Hour
 
-	url, err := psClient.PresignGetObject(ctx, &requestObj, s3.WithPresignExpires(expireDuration))
+	url, err := psClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(filename),
+	}, s3.WithPresignExpires(expireDuration))
 	if err != nil {
 		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to generate presigned url for object")
 	}
@@ -233,7 +256,7 @@ func (s *Service) TransactionReceiptPresignedURL(ctx context.Context, itemID, tr
 
 }
 
-func (s *Service) AddReceiptToTransaction(ctx context.Context, itemID, transactionID string, buffer *bytes.Buffer) error {
+func (s *service) AddReceiptToTransaction(ctx context.Context, itemID, transactionID string, buffer *bytes.Buffer) error {
 
 	transaction, err := s.Transaction(ctx, itemID, transactionID)
 	if err != nil {
@@ -278,7 +301,7 @@ func (s *Service) AddReceiptToTransaction(ctx context.Context, itemID, transacti
 
 }
 
-func (s *Service) RemoveReceiptFromTransaction(ctx context.Context, itemID, transactionID string) error {
+func (s *service) RemoveReceiptFromTransaction(ctx context.Context, itemID, transactionID string) error {
 
 	transaction, err := s.Transaction(ctx, itemID, transactionID)
 	if err != nil {

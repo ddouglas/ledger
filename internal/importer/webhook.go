@@ -125,10 +125,10 @@ func (s *service) VerifyWebhookMessage(ctx context.Context, header http.Header, 
 	// Singature returns the JWT Headers, that will allow me to get the KID
 	// Once I get I KID, I can reach out ot Plaid to fethc the key,
 	// use the key to verify the signature
-	// Once signature is verified I know that the has in the body of the JWT is safe to use
+	// Once signature is verified I know that the hash in the body of the JWT is safe to use
 	// SHA256 Hash the message parameter of this function and compare it with the SHA256 in
 	// the body of the JWT. If they equal return nil
-	if len(messageSignatures) > 0 {
+	if len(messageSignatures) > 1 {
 		return fmt.Errorf("expected a single signature, got %d", len(messageSignatures))
 	}
 

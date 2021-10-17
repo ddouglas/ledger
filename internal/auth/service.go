@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	// "github.com/lestrrat-go/jwx/jwk"
-
 	"github.com/ddouglas/ledger/internal/cache"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jwt"
@@ -15,9 +13,6 @@ import (
 )
 
 type Service interface {
-	// InitializeState(ctx context.Context) (string, error)
-	// CheckState(ctx context.Context, key string) error
-
 	ExchangeCode(ctx context.Context, code string) (string, jwt.Token, error)
 	ValidateToken(ctx context.Context, t string) (jwt.Token, error)
 }
@@ -29,22 +24,30 @@ type service struct {
 	config *config
 }
 
-func New(cache cache.Service, client *http.Client, oauth *oauth2.Config, optFuncs ...configOption) Service {
-	c := &config{}
-	for _, optFunc := range optFuncs {
-		optFunc(c)
-	}
+type config struct {
+	JWKSURI  string
+	Audience string
+	Issuer   string
+}
 
+func New(cache cache.Service, client *http.Client, oauth *oauth2.Config, jwksURI, audience, issuer string) Service {
 	return &service{
 		client: client,
 		cache:  cache,
 		oauth:  oauth,
-		config: c,
+		config: &config{
+			JWKSURI:  jwksURI,
+			Audience: audience,
+			Issuer:   issuer,
+		},
 	}
 }
 
+// ExchangeCode exchanges an Auth0 callback code for a JWT Token and then validates that the
+// token is valid and no MITM injection happened resulting in an invalid token
 func (s *service) ExchangeCode(ctx context.Context, code string) (string, jwt.Token, error) {
 
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, s.client)
 	bearer, err := s.oauth.Exchange(ctx, code)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to exchange code for token: %w", err)
@@ -59,6 +62,9 @@ func (s *service) ExchangeCode(ctx context.Context, code string) (string, jwt.To
 
 }
 
+// ValidateToken validates that t is a valid JWT. It fetch a JWKS from cache and checks
+// to see if various config options are set before calling the lestrrat-go JWT lib
+// to validate T
 func (s *service) ValidateToken(ctx context.Context, t string) (jwt.Token, error) {
 
 	set, err := s.getKeySet(ctx)
@@ -66,16 +72,12 @@ func (s *service) ValidateToken(ctx context.Context, t string) (jwt.Token, error
 		return nil, fmt.Errorf("failed to fetch JWK Set: %w", err)
 	}
 
-	options := make([]jwt.ParseOption, 0, 3)
-	options = append(options, jwt.WithKeySet(set))
-	if s.config.Audience != nil {
-		options = append(options, jwt.WithAudience(*s.config.Audience))
-	}
-	if s.config.Issuer != nil {
-		options = append(options, jwt.WithIssuer(*s.config.Issuer))
-	}
-
-	token, err := jwt.ParseString(t, options...)
+	token, err := jwt.ParseString(
+		t,
+		jwt.WithKeySet(set),
+		jwt.WithAudience(s.config.Audience),
+		jwt.WithIssuer(s.config.Issuer),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
@@ -84,38 +86,10 @@ func (s *service) ValidateToken(ctx context.Context, t string) (jwt.Token, error
 
 }
 
-// func (s *service) InitializeState(ctx context.Context) (string, error) {
-
-// 	state := fmt.Sprintf("%x", sha256.Sum256([]byte(time.Now().Format(time.RFC3339Nano))))
-// 	_, err := s.redis.Set(ctx, fmt.Sprintf("state:%s", state), 1, time.Minute*5).Result()
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to store state key in redis: %w", err)
-// 	}
-
-// 	return state, nil
-
-// }
-
-// func (s *service) CheckState(ctx context.Context, hash string) error {
-
-// 	key := stateKey(hash)
-// 	_, err := s.redis.Get(ctx, key).Result()
-// 	if err != nil && !errors.Is(err, redis.Nil) {
-// 		return fmt.Errorf("failed to check redis for state: %w", err)
-// 	}
-// 	if err != nil && errors.Is(err, redis.Nil) {
-// 		return fmt.Errorf("state key is expired or was never set")
-// 	}
-
-// 	_, err = s.redis.Del(ctx, key).Result()
-// 	if err != nil {
-// 		return fmt.Errorf("failed to remove state key from redis: %w", err)
-// 	}
-
-// 	return nil
-
-// }
-
+// getKeySet fetches the JWKS from cache. If the cache does not have
+// a JWKS to return, we attempt to fetch it from Auth0 and cache
+// it again. The timeout is handled by the cache package, but is generally
+// set to 6 hours
 func (s *service) getKeySet(ctx context.Context) (jwk.Set, error) {
 
 	b, err := s.cache.JWKS(ctx)

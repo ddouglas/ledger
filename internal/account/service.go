@@ -9,10 +9,15 @@ type Service interface {
 	ledger.AccountRepository
 }
 
-func New(optFuncs ...configOption) Service {
-	s := &service{}
-	for _, optFunc := range optFuncs {
-		optFunc(s)
+type service struct {
+	// cache cache.Service
+
+	// gateway gateway.Service
+	ledger.AccountRepository
+}
+
+func New(account ledger.AccountRepository) Service {
+	return &service{
+		AccountRepository: account,
 	}
-	return s
 }

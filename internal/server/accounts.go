@@ -381,7 +381,7 @@ func (s *server) handlePostAccountTransactionReceipt(w http.ResponseWriter, r *h
 	// content length tells us how long the string is in byte, so lets grow the bytes slice to that length
 	buf.Grow(contentLength)
 	// Now that the memory has been allocated, lets read from the Request Body
-	buf.ReadFrom(r.Body)
+	_, _ = buf.ReadFrom(r.Body)
 	// Now lets allocate a second buffer. This buffer will hold the base64 decoded data. This should either be an image
 	// or a PDF
 	buf2 := new(bytes.Buffer)
@@ -390,7 +390,7 @@ func (s *server) handlePostAccountTransactionReceipt(w http.ResponseWriter, r *h
 	// Read the first buffer into the base 64 decoder
 	b64Decoder := base64.NewDecoder(base64.StdEncoding, buf)
 	// Read from the decoder now into our second buffer
-	buf2.ReadFrom(b64Decoder)
+	_, _ = buf2.ReadFrom(b64Decoder)
 
 	err = s.transaction.AddReceiptToTransaction(ctx, itemID, transactionID, buf2)
 	if err != nil {

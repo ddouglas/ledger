@@ -1,0 +1,117 @@
+directive @goModel(model: String) on OBJECT | INPUT_OBJECT
+directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+scalar Time
+scalar Uint64
+
+type Account @goModel(model: "github.com/ddouglas/ledger.Account") {
+    itemID: String!
+    accountID: String!
+    balance: AccountBalance!
+    mask: String
+    name: String
+    officialName: String
+    subType: String
+    type: String
+    recalculateBalance: Boolean!
+}
+
+type AccountBalance @goModel(model: "github.com/ddouglas/ledger.AccountBalance") {
+    available: Float!
+    current: Float!
+    limit: Float!
+    isoCurrencyCode: String!
+    unofficialCurrencyCode: String
+    lastUpdated: Time
+}
+
+type Item @goModel(model: "github.com/ddouglas/ledger.Item") {
+    itemID: String!
+    institutionID: String
+    webhook: String
+    error: String
+    availbleProducts: [String!]
+    billedProducts: [String!]
+    consentExpirationTime: Time
+    updateType: String
+    itemStatus: ItemStatus
+
+    userID: String!
+    isRefreshing: Boolean!
+
+    institution: PlaidInstitution @goField(forceResolver: true)
+    accounts: [Account!] @goField(forceResolver: true)
+}
+
+type ItemStatus @goModel(model: "github.com/ddouglas/ledger.ItemStatus") {
+    transactions: ProductStatus
+    lastWebhook: WebhookStatus
+}
+
+type PlaidCategory @goModel(model: "github.com/ddouglas/ledger.PlaidCategory") {
+    id: String
+    name: String
+    Group: String
+    Hierarchy: [String!]
+}
+
+type PlaidInstitution @goModel(model: "github.com/ddouglas/ledger.PlaidInstitution") {
+    id: String!
+    name: String!
+}
+
+type ProductStatus @goModel(model: "github.com/plaid/plaid-go/plaid.ProductStatus") {
+    lastFailedUpdate: Time!
+    lastSuccessfulUpdate: Time!
+}
+
+type PaginatedTransactions @goModel(model: "github.com/ddouglas/ledger.PaginatedTransactions") {
+    total: Uint64!
+    transactions: [Transaction!]
+}
+
+type Transaction @goModel(model: "github.com/ddouglas/ledger.Transaction") {
+    itemID: String!
+    accountID: String!
+    transactionID: String!
+    pendingTransactionID: String
+    categoryID: String
+    name: String!
+    pending: Boolean!
+    hasReceipt: Boolean!
+    receiptType: String
+    paymentChannel: String!
+    merchantName: String
+    unofficialCurrencyCode: String
+    isoCurrencyCode: String
+    amount: Float
+    transactionCode: String
+    authorizedDate: Time
+    authorizedDateTime: Time
+    date: Time!
+    dateTime: Time
+    deletedAt: Time
+    hiddenAt: Time
+
+    category: PlaidCategory
+}
+
+input TransactionFilter {
+    categoryID: String
+    fromTransactionID: String
+    limit: Uint64
+    startDate: String
+    endDate: String
+    dateInclusive: Boolean
+    onDate: String
+    transactionType: TransactionType
+}
+
+enum TransactionType {
+    EXPENSES
+    INCOME
+}
+
+type WebhookStatus @goModel(model: "github.com/plaid/plaid-go/plaid.WebhookStatus") {
+    sentAt: Time!
+    codeSent: String!
+}

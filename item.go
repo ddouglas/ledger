@@ -38,7 +38,7 @@ type Item struct {
 	CreatedAt    time.Time `db:"created_at" json:"-" deepcopier:"skip"`
 	UpdatedAt    time.Time `db:"updated_at" json:"-" deepcopier:"skip"`
 
-	Institution *PlaidInstitution `json:"institution,omitempty" deepcopier:"skip"`
+	// Institution *PlaidInstitution `json:"institution,omitempty" deepcopier:"skip"`
 }
 
 type ItemStatus plaid.ItemStatus
@@ -64,16 +64,6 @@ func (s *ItemStatus) Scan(value interface{}) error {
 	}
 
 	return nil
-}
-
-type ItemProductStatus struct {
-	LastFailedUpdate     time.Time `json:"last_failed_update,omitempty"`
-	LastSuccessfulUpdate time.Time `json:"last_successful_update,omitempty"`
-}
-
-type ItemWebhookStatus struct {
-	SentAt   time.Time `json:"sent_at,omitempty"`
-	CodeSent string    `json:"code_sent,omitempty"`
 }
 
 type RegisterItemRequest struct {

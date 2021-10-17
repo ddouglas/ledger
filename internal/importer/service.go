@@ -9,7 +9,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ddouglas/ledger"
+	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/gateway"
+	"github.com/ddouglas/ledger/internal/item"
+	"github.com/ddouglas/ledger/internal/transaction"
 	"github.com/go-redis/redis/v8"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
@@ -23,12 +26,39 @@ type Service interface {
 	PublishCustomWebhookMessage(ctx context.Context, webhook *ledger.WebhookMessage) error
 }
 
-func New(optFucs ...configOption) Service {
-	s := &service{}
-	for _, optFunc := range optFucs {
-		optFunc(s)
+type service struct {
+	account     account.Service
+	item        item.Service
+	transaction transaction.Service
+
+	redis    *redis.Client
+	gateway  gateway.Service
+	logger   *logrus.Logger
+	newrelic *newrelic.Application
+
+	ledger.WebhookRepository
+}
+
+func New(
+	newrelic *newrelic.Application,
+	logger *logrus.Logger,
+	client *redis.Client,
+	gateway gateway.Service,
+	account account.Service,
+	item item.Service,
+	transaction transaction.Service,
+	webhook ledger.WebhookRepository,
+) Service {
+	return &service{
+		WebhookRepository: webhook,
+		newrelic:          newrelic,
+		logger:            logger,
+		redis:             client,
+		gateway:           gateway,
+		account:           account,
+		item:              item,
+		transaction:       transaction,
 	}
-	return s
 }
 
 func (s *service) Run(ctx context.Context) {

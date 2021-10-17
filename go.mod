@@ -3,6 +3,7 @@ module github.com/ddouglas/ledger
 go 1.16
 
 require (
+	github.com/99designs/gqlgen v0.14.0
 	github.com/Masterminds/squirrel v1.5.0
 	github.com/aws/aws-sdk-go-v2 v1.7.1
 	github.com/aws/aws-sdk-go-v2/config v1.5.0
@@ -28,6 +29,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6
 	github.com/urfave/cli/v2 v2.3.0
+	github.com/vektah/gqlparser/v2 v2.2.0
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/null v8.0.0+incompatible
 	github.com/volatiletech/sqlboiler v3.7.1+incompatible // indirect

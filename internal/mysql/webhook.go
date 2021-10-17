@@ -29,7 +29,6 @@ func NewWebhookRepository(db *sqlx.DB) ledger.WebhookRepository {
 func (r *webhookRepository) LogWebhook(ctx context.Context, webhook *ledger.WebhookMessage) error {
 
 	columns := webhookLogColumns[1:]
-	println("Webhook Logs Columns", columns)
 
 	data, err := json.Marshal(webhook)
 	if err != nil {

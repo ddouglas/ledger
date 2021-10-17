@@ -1,0 +1,4 @@
+type Query {
+    items: [Item!]
+    transactions(itemID: String!, accountID: String!, filters: TransactionFilter): PaginatedTransactions!
+}

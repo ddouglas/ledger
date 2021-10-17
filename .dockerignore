@@ -1,6 +1,7 @@
-logs
-.auth0
-.build
+.config/.env
+.build/
+logs/
+cmd/ledger/__debug_bin
 .data
-.vscode
-logs
+assets/
+.terraform/.terraform/
