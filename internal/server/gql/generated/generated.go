@@ -42,6 +42,8 @@ type Config struct {
 
 type ResolverRoot interface {
 	Item() ItemResolver
+	Merchant() MerchantResolver
+	Mutation() MutationResolver
 	PlaidCategory() PlaidCategoryResolver
 	Query() QueryResolver
 	Transaction() TransactionResolver
@@ -93,6 +95,23 @@ type ComplexityRoot struct {
 		Transactions func(childComplexity int) int
 	}
 
+	Merchant struct {
+		Aliases func(childComplexity int) int
+		ID      func(childComplexity int) int
+		Name    func(childComplexity int) int
+	}
+
+	MerchantAlias struct {
+		Alias      func(childComplexity int) int
+		AliasID    func(childComplexity int) int
+		MerchantID func(childComplexity int) int
+	}
+
+	Mutation struct {
+		DeleteReceipt     func(childComplexity int, itemID string, transactionID string) int
+		UpdateTransaction func(childComplexity int, itemID string, transactionID string, input *ledger.UpdateTransactionInput) int
+	}
+
 	PaginatedTransactions struct {
 		Total        func(childComplexity int) int
 		Transactions func(childComplexity int) int
@@ -119,6 +138,8 @@ type ComplexityRoot struct {
 		Categories            func(childComplexity int) int
 		Items                 func(childComplexity int) int
 		LinkToken             func(childComplexity int) int
+		Merchants             func(childComplexity int) int
+		TransactionReceipt    func(childComplexity int, itemID string, accountID string, transactionID string) int
 		Transactions          func(childComplexity int, itemID string, accountID string, filters *model.TransactionFilter) int
 		TransactionsPaginated func(childComplexity int, itemID string, accountID string, filters *model.TransactionFilter) int
 	}
@@ -137,7 +158,8 @@ type ComplexityRoot struct {
 		HiddenAt               func(childComplexity int) int
 		ISOCurrencyCode        func(childComplexity int) int
 		ItemID                 func(childComplexity int) int
-		MerchantName           func(childComplexity int) int
+		Merchant               func(childComplexity int) int
+		MerchantID             func(childComplexity int) int
 		Name                   func(childComplexity int) int
 		PaymentChannel         func(childComplexity int) int
 		Pending                func(childComplexity int) int
@@ -146,6 +168,11 @@ type ComplexityRoot struct {
 		TransactionCode        func(childComplexity int) int
 		TransactionID          func(childComplexity int) int
 		UnofficialCurrencyCode func(childComplexity int) int
+	}
+
+	TransactionReceipt struct {
+		Get func(childComplexity int) int
+		Put func(childComplexity int) int
 	}
 
 	WebhookStatus struct {
@@ -163,6 +190,13 @@ type ItemResolver interface {
 	Institution(ctx context.Context, obj *ledger.Item) (*ledger.PlaidInstitution, error)
 	Accounts(ctx context.Context, obj *ledger.Item) ([]*ledger.Account, error)
 }
+type MerchantResolver interface {
+	Aliases(ctx context.Context, obj *ledger.Merchant) ([]*ledger.MerchantAlias, error)
+}
+type MutationResolver interface {
+	DeleteReceipt(ctx context.Context, itemID string, transactionID string) (bool, error)
+	UpdateTransaction(ctx context.Context, itemID string, transactionID string, input *ledger.UpdateTransactionInput) (*ledger.Transaction, error)
+}
 type PlaidCategoryResolver interface {
 	Hierarchy(ctx context.Context, obj *ledger.PlaidCategory) ([]string, error)
 }
@@ -170,11 +204,14 @@ type QueryResolver interface {
 	Categories(ctx context.Context) ([]*ledger.PlaidCategory, error)
 	Items(ctx context.Context) ([]*ledger.Item, error)
 	LinkToken(ctx context.Context) (string, error)
+	Merchants(ctx context.Context) ([]*ledger.Merchant, error)
 	TransactionsPaginated(ctx context.Context, itemID string, accountID string, filters *model.TransactionFilter) (*ledger.PaginatedTransactions, error)
 	Transactions(ctx context.Context, itemID string, accountID string, filters *model.TransactionFilter) ([]*ledger.Transaction, error)
+	TransactionReceipt(ctx context.Context, itemID string, accountID string, transactionID string) (*ledger.TransactionReceipt, error)
 }
 type TransactionResolver interface {
 	Category(ctx context.Context, obj *ledger.Transaction) (*ledger.PlaidCategory, error)
+	Merchant(ctx context.Context, obj *ledger.Transaction) (*ledger.Merchant, error)
 }
 
 type executableSchema struct {
@@ -402,6 +439,72 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ItemStatus.Transactions(childComplexity), true
 
+	case "Merchant.aliases":
+		if e.complexity.Merchant.Aliases == nil {
+			break
+		}
+
+		return e.complexity.Merchant.Aliases(childComplexity), true
+
+	case "Merchant.id":
+		if e.complexity.Merchant.ID == nil {
+			break
+		}
+
+		return e.complexity.Merchant.ID(childComplexity), true
+
+	case "Merchant.name":
+		if e.complexity.Merchant.Name == nil {
+			break
+		}
+
+		return e.complexity.Merchant.Name(childComplexity), true
+
+	case "MerchantAlias.alias":
+		if e.complexity.MerchantAlias.Alias == nil {
+			break
+		}
+
+		return e.complexity.MerchantAlias.Alias(childComplexity), true
+
+	case "MerchantAlias.aliasID":
+		if e.complexity.MerchantAlias.AliasID == nil {
+			break
+		}
+
+		return e.complexity.MerchantAlias.AliasID(childComplexity), true
+
+	case "MerchantAlias.merchantID":
+		if e.complexity.MerchantAlias.MerchantID == nil {
+			break
+		}
+
+		return e.complexity.MerchantAlias.MerchantID(childComplexity), true
+
+	case "Mutation.deleteReceipt":
+		if e.complexity.Mutation.DeleteReceipt == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteReceipt_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteReceipt(childComplexity, args["itemID"].(string), args["transactionID"].(string)), true
+
+	case "Mutation.updateTransaction":
+		if e.complexity.Mutation.UpdateTransaction == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateTransaction_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateTransaction(childComplexity, args["itemID"].(string), args["transactionID"].(string), args["input"].(*ledger.UpdateTransactionInput)), true
+
 	case "PaginatedTransactions.total":
 		if e.complexity.PaginatedTransactions.Total == nil {
 			break
@@ -492,6 +595,25 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.LinkToken(childComplexity), true
+
+	case "Query.merchants":
+		if e.complexity.Query.Merchants == nil {
+			break
+		}
+
+		return e.complexity.Query.Merchants(childComplexity), true
+
+	case "Query.transactionReceipt":
+		if e.complexity.Query.TransactionReceipt == nil {
+			break
+		}
+
+		args, err := ec.field_Query_transactionReceipt_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TransactionReceipt(childComplexity, args["itemID"].(string), args["accountID"].(string), args["transactionID"].(string)), true
 
 	case "Query.transactions":
 		if e.complexity.Query.Transactions == nil {
@@ -608,12 +730,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Transaction.ItemID(childComplexity), true
 
-	case "Transaction.merchantName":
-		if e.complexity.Transaction.MerchantName == nil {
+	case "Transaction.merchant":
+		if e.complexity.Transaction.Merchant == nil {
 			break
 		}
 
-		return e.complexity.Transaction.MerchantName(childComplexity), true
+		return e.complexity.Transaction.Merchant(childComplexity), true
+
+	case "Transaction.merchantID":
+		if e.complexity.Transaction.MerchantID == nil {
+			break
+		}
+
+		return e.complexity.Transaction.MerchantID(childComplexity), true
 
 	case "Transaction.name":
 		if e.complexity.Transaction.Name == nil {
@@ -671,6 +800,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Transaction.UnofficialCurrencyCode(childComplexity), true
 
+	case "TransactionReceipt.get":
+		if e.complexity.TransactionReceipt.Get == nil {
+			break
+		}
+
+		return e.complexity.TransactionReceipt.Get(childComplexity), true
+
+	case "TransactionReceipt.put":
+		if e.complexity.TransactionReceipt.Put == nil {
+			break
+		}
+
+		return e.complexity.TransactionReceipt.Put(childComplexity), true
+
 	case "WebhookStatus.codeSent":
 		if e.complexity.WebhookStatus.CodeSent == nil {
 			break
@@ -709,6 +852,20 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 				Data: buf.Bytes(),
 			}
 		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
 
 	default:
 		return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
@@ -735,6 +892,11 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
+	{Name: "internal/server/gql/mutation.graphqls", Input: `type Mutation {
+    deleteReceipt(itemID: String!, transactionID: String!): Boolean!
+    updateTransaction(itemID: String!, transactionID: String!, input: UpdateTransactionInput): Transaction!
+}
+`, BuiltIn: false},
 	{Name: "internal/server/gql/query.graphqls", Input: `type Query {
     categories: [PlaidCategory!]
 
@@ -742,14 +904,18 @@ var sources = []*ast.Source{
 
     linkToken: String!
 
+    merchants: [Merchant!]
+
     transactionsPaginated(itemID: String!, accountID: String!, filters: TransactionFilter): PaginatedTransactions!
     transactions(itemID: String!, accountID: String!, filters: TransactionFilter): [Transaction]!
+    transactionReceipt(itemID: String!, accountID: String!, transactionID: String!): TransactionReceipt
 }
 `, BuiltIn: false},
 	{Name: "internal/server/gql/type.graphqls", Input: `directive @goModel(model: String) on OBJECT | INPUT_OBJECT
 directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 scalar Time
 scalar Uint64
+scalar Upload
 
 type Account @goModel(model: "github.com/ddouglas/ledger.Account") {
     itemID: String!
@@ -795,6 +961,19 @@ type ItemStatus @goModel(model: "github.com/ddouglas/ledger.ItemStatus") {
     lastWebhook: WebhookStatus
 }
 
+type Merchant @goModel(model: "github.com/ddouglas/ledger.Merchant") {
+    id: String!
+    name: String!
+
+    aliases: [MerchantAlias]
+}
+
+type MerchantAlias @goModel(model: "github.com/ddouglas/ledger.MerchantAlias") {
+    aliasID: String!
+    merchantID: String!
+    alias: String!
+}
+
 type PlaidCategory @goModel(model: "github.com/ddouglas/ledger.PlaidCategory") {
     id: String
     name: String
@@ -828,7 +1007,7 @@ type Transaction @goModel(model: "github.com/ddouglas/ledger.Transaction") {
     hasReceipt: Boolean!
     receiptType: String
     paymentChannel: String!
-    merchantName: String
+    merchantID: String
     unofficialCurrencyCode: String
     isoCurrencyCode: String
     amount: Float
@@ -841,10 +1020,12 @@ type Transaction @goModel(model: "github.com/ddouglas/ledger.Transaction") {
     hiddenAt: Time
 
     category: PlaidCategory @goField(forceResolver: true)
+    merchant: Merchant!
 }
 
 input TransactionFilter {
     categoryID: String
+    merchantID: String
     fromTransactionID: String
     limit: Uint64
     startDate: String
@@ -859,6 +1040,17 @@ enum TransactionType {
     INCOME
 }
 
+type TransactionReceipt @goModel(model: "github.com/ddouglas/ledger.TransactionReceipt") {
+    get: String
+    put: String
+}
+
+input UpdateTransactionInput @goModel(model: "github.com/ddouglas/ledger.UpdateTransactionInput") {
+    name: String
+    merchantID: String
+    categoryID: String
+}
+
 type WebhookStatus @goModel(model: "github.com/plaid/plaid-go/plaid.WebhookStatus") {
     sentAt: Time!
     codeSent: String!
@@ -870,6 +1062,63 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_deleteReceipt_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["itemID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("itemID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["itemID"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["transactionID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transactionID"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["transactionID"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateTransaction_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["itemID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("itemID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["itemID"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["transactionID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transactionID"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["transactionID"] = arg1
+	var arg2 *ledger.UpdateTransactionInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg2, err = ec.unmarshalOUpdateTransactionInput2ᚖgithubᚗcomᚋddouglasᚋledgerᚐUpdateTransactionInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg2
+	return args, nil
+}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -883,6 +1132,39 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_transactionReceipt_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["itemID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("itemID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["itemID"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["accountID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountID"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["accountID"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["transactionID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transactionID"))
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["transactionID"] = arg2
 	return args, nil
 }
 
@@ -1983,6 +2265,297 @@ func (ec *executionContext) _ItemStatus_lastWebhook(ctx context.Context, field g
 	return ec.marshalOWebhookStatus2githubᚗcomᚋplaidᚋplaidᚑgoᚋplaidᚐWebhookStatus(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Merchant_id(ctx context.Context, field graphql.CollectedField, obj *ledger.Merchant) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Merchant",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Merchant_name(ctx context.Context, field graphql.CollectedField, obj *ledger.Merchant) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Merchant",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Merchant_aliases(ctx context.Context, field graphql.CollectedField, obj *ledger.Merchant) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Merchant",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Merchant().Aliases(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*ledger.MerchantAlias)
+	fc.Result = res
+	return ec.marshalOMerchantAlias2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchantAlias(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MerchantAlias_aliasID(ctx context.Context, field graphql.CollectedField, obj *ledger.MerchantAlias) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MerchantAlias",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AliasID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MerchantAlias_merchantID(ctx context.Context, field graphql.CollectedField, obj *ledger.MerchantAlias) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MerchantAlias",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MerchantID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MerchantAlias_alias(ctx context.Context, field graphql.CollectedField, obj *ledger.MerchantAlias) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MerchantAlias",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Alias, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_deleteReceipt(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_deleteReceipt_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteReceipt(rctx, args["itemID"].(string), args["transactionID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_updateTransaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateTransaction_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateTransaction(rctx, args["itemID"].(string), args["transactionID"].(string), args["input"].(*ledger.UpdateTransactionInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ledger.Transaction)
+	fc.Result = res
+	return ec.marshalNTransaction2ᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _PaginatedTransactions_total(ctx context.Context, field graphql.CollectedField, obj *ledger.PaginatedTransactions) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2417,6 +2990,38 @@ func (ec *executionContext) _Query_linkToken(ctx context.Context, field graphql.
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_merchants(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Merchants(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*ledger.Merchant)
+	fc.Result = res
+	return ec.marshalOMerchant2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchantᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_transactionsPaginated(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2499,6 +3104,45 @@ func (ec *executionContext) _Query_transactions(ctx context.Context, field graph
 	res := resTmp.([]*ledger.Transaction)
 	fc.Result = res
 	return ec.marshalNTransaction2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_transactionReceipt(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_transactionReceipt_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().TransactionReceipt(rctx, args["itemID"].(string), args["accountID"].(string), args["transactionID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ledger.TransactionReceipt)
+	fc.Result = res
+	return ec.marshalOTransactionReceipt2ᚖgithubᚗcomᚋddouglasᚋledgerᚐTransactionReceipt(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2913,7 +3557,7 @@ func (ec *executionContext) _Transaction_paymentChannel(ctx context.Context, fie
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Transaction_merchantName(ctx context.Context, field graphql.CollectedField, obj *ledger.Transaction) (ret graphql.Marshaler) {
+func (ec *executionContext) _Transaction_merchantID(ctx context.Context, field graphql.CollectedField, obj *ledger.Transaction) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -2931,7 +3575,7 @@ func (ec *executionContext) _Transaction_merchantName(ctx context.Context, field
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MerchantName, nil
+		return obj.MerchantID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2940,9 +3584,9 @@ func (ec *executionContext) _Transaction_merchantName(ctx context.Context, field
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(null.String)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2githubᚗcomᚋvolatiletechᚋnullᚐString(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_unofficialCurrencyCode(ctx context.Context, field graphql.CollectedField, obj *ledger.Transaction) (ret graphql.Marshaler) {
@@ -3298,6 +3942,105 @@ func (ec *executionContext) _Transaction_category(ctx context.Context, field gra
 	res := resTmp.(*ledger.PlaidCategory)
 	fc.Result = res
 	return ec.marshalOPlaidCategory2ᚖgithubᚗcomᚋddouglasᚋledgerᚐPlaidCategory(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Transaction_merchant(ctx context.Context, field graphql.CollectedField, obj *ledger.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Transaction().Merchant(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ledger.Merchant)
+	fc.Result = res
+	return ec.marshalNMerchant2ᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchant(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TransactionReceipt_get(ctx context.Context, field graphql.CollectedField, obj *ledger.TransactionReceipt) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TransactionReceipt",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Get, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(null.String)
+	fc.Result = res
+	return ec.marshalOString2githubᚗcomᚋvolatiletechᚋnullᚐString(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _TransactionReceipt_put(ctx context.Context, field graphql.CollectedField, obj *ledger.TransactionReceipt) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "TransactionReceipt",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Put, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(null.String)
+	fc.Result = res
+	return ec.marshalOString2githubᚗcomᚋvolatiletechᚋnullᚐString(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _WebhookStatus_sentAt(ctx context.Context, field graphql.CollectedField, obj *plaid.WebhookStatus) (ret graphql.Marshaler) {
@@ -4509,6 +5252,14 @@ func (ec *executionContext) unmarshalInputTransactionFilter(ctx context.Context,
 			if err != nil {
 				return it, err
 			}
+		case "merchantID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("merchantID"))
+			it.MerchantID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "fromTransactionID":
 			var err error
 
@@ -4562,6 +5313,45 @@ func (ec *executionContext) unmarshalInputTransactionFilter(ctx context.Context,
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transactionType"))
 			it.TransactionType, err = ec.unmarshalOTransactionType2ᚖgithubᚗcomᚋddouglasᚋledgerᚋinternalᚋserverᚋgqlᚋmodelᚐTransactionType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateTransactionInput(ctx context.Context, obj interface{}) (ledger.UpdateTransactionInput, error) {
+	var it ledger.UpdateTransactionInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	for k, v := range asMap {
+		switch k {
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalOString2githubᚗcomᚋvolatiletechᚋnullᚐString(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "merchantID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("merchantID"))
+			it.MerchantID, err = ec.unmarshalOString2githubᚗcomᚋvolatiletechᚋnullᚐString(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "categoryID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("categoryID"))
+			it.CategoryID, err = ec.unmarshalOString2githubᚗcomᚋvolatiletechᚋnullᚐString(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4805,6 +5595,122 @@ func (ec *executionContext) _ItemStatus(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var merchantImplementors = []string{"Merchant"}
+
+func (ec *executionContext) _Merchant(ctx context.Context, sel ast.SelectionSet, obj *ledger.Merchant) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, merchantImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Merchant")
+		case "id":
+			out.Values[i] = ec._Merchant_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "name":
+			out.Values[i] = ec._Merchant_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "aliases":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Merchant_aliases(ctx, field, obj)
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var merchantAliasImplementors = []string{"MerchantAlias"}
+
+func (ec *executionContext) _MerchantAlias(ctx context.Context, sel ast.SelectionSet, obj *ledger.MerchantAlias) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, merchantAliasImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MerchantAlias")
+		case "aliasID":
+			out.Values[i] = ec._MerchantAlias_aliasID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "merchantID":
+			out.Values[i] = ec._MerchantAlias_merchantID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "alias":
+			out.Values[i] = ec._MerchantAlias_alias(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "deleteReceipt":
+			out.Values[i] = ec._Mutation_deleteReceipt(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updateTransaction":
+			out.Values[i] = ec._Mutation_updateTransaction(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var paginatedTransactionsImplementors = []string{"PaginatedTransactions"}
 
 func (ec *executionContext) _PaginatedTransactions(ctx context.Context, sel ast.SelectionSet, obj *ledger.PaginatedTransactions) graphql.Marshaler {
@@ -4988,6 +5894,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "merchants":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_merchants(ctx, field)
+				return res
+			})
 		case "transactionsPaginated":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -5014,6 +5931,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
+				return res
+			})
+		case "transactionReceipt":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_transactionReceipt(ctx, field)
 				return res
 			})
 		case "__type":
@@ -5083,8 +6011,8 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "merchantName":
-			out.Values[i] = ec._Transaction_merchantName(ctx, field, obj)
+		case "merchantID":
+			out.Values[i] = ec._Transaction_merchantID(ctx, field, obj)
 		case "unofficialCurrencyCode":
 			out.Values[i] = ec._Transaction_unofficialCurrencyCode(ctx, field, obj)
 		case "isoCurrencyCode":
@@ -5119,6 +6047,46 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 				res = ec._Transaction_category(ctx, field, obj)
 				return res
 			})
+		case "merchant":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Transaction_merchant(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var transactionReceiptImplementors = []string{"TransactionReceipt"}
+
+func (ec *executionContext) _TransactionReceipt(ctx context.Context, sel ast.SelectionSet, obj *ledger.TransactionReceipt) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, transactionReceiptImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TransactionReceipt")
+		case "get":
+			out.Values[i] = ec._TransactionReceipt_get(ctx, field, obj)
+		case "put":
+			out.Values[i] = ec._TransactionReceipt_put(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5472,6 +6440,20 @@ func (ec *executionContext) marshalNItem2ᚖgithubᚗcomᚋddouglasᚋledgerᚐI
 	return ec._Item(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNMerchant2githubᚗcomᚋddouglasᚋledgerᚐMerchant(ctx context.Context, sel ast.SelectionSet, v ledger.Merchant) graphql.Marshaler {
+	return ec._Merchant(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMerchant2ᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchant(ctx context.Context, sel ast.SelectionSet, v *ledger.Merchant) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Merchant(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPaginatedTransactions2githubᚗcomᚋddouglasᚋledgerᚐPaginatedTransactions(ctx context.Context, sel ast.SelectionSet, v ledger.PaginatedTransactions) graphql.Marshaler {
 	return ec._PaginatedTransactions(ctx, sel, &v)
 }
@@ -5524,6 +6506,10 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNTransaction2githubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx context.Context, sel ast.SelectionSet, v ledger.Transaction) graphql.Marshaler {
+	return ec._Transaction(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNTransaction2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx context.Context, sel ast.SelectionSet, v []*ledger.Transaction) graphql.Marshaler {
@@ -5977,6 +6963,101 @@ func (ec *executionContext) marshalOItemStatus2githubᚗcomᚋddouglasᚋledger�
 	return ec._ItemStatus(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalOMerchant2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchantᚄ(ctx context.Context, sel ast.SelectionSet, v []*ledger.Merchant) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNMerchant2ᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchant(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalOMerchantAlias2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchantAlias(ctx context.Context, sel ast.SelectionSet, v []*ledger.MerchantAlias) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOMerchantAlias2ᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchantAlias(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOMerchantAlias2ᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchantAlias(ctx context.Context, sel ast.SelectionSet, v *ledger.MerchantAlias) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MerchantAlias(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOPlaidCategory2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐPlaidCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*ledger.PlaidCategory) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -6188,6 +7269,13 @@ func (ec *executionContext) unmarshalOTransactionFilter2ᚖgithubᚗcomᚋddougl
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOTransactionReceipt2ᚖgithubᚗcomᚋddouglasᚋledgerᚐTransactionReceipt(ctx context.Context, sel ast.SelectionSet, v *ledger.TransactionReceipt) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TransactionReceipt(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOTransactionType2ᚖgithubᚗcomᚋddouglasᚋledgerᚋinternalᚋserverᚋgqlᚋmodelᚐTransactionType(ctx context.Context, v interface{}) (*model.TransactionType, error) {
 	if v == nil {
 		return nil, nil
@@ -6217,6 +7305,14 @@ func (ec *executionContext) marshalOUint642ᚖuint64(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return scalar.MarshalUint64(*v)
+}
+
+func (ec *executionContext) unmarshalOUpdateTransactionInput2ᚖgithubᚗcomᚋddouglasᚋledgerᚐUpdateTransactionInput(ctx context.Context, v interface{}) (*ledger.UpdateTransactionInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputUpdateTransactionInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOWebhookStatus2githubᚗcomᚋplaidᚋplaidᚑgoᚋplaidᚐWebhookStatus(ctx context.Context, sel ast.SelectionSet, v plaid.WebhookStatus) graphql.Marshaler {

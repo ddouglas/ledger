@@ -93,7 +93,7 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 			"item_id":    itemID,
 			"account_id": accountID,
 		}).
-		OrderBy("date desc, amount desc")
+		OrderBy("date desc, amount asc")
 	stmt = transactionsQueryBuilder(stmt, filters)
 	query, args, err := stmt.ToSql()
 	if err != nil {
@@ -115,6 +115,9 @@ func transactionsQueryBuilder(stmt sq.SelectBuilder, filters *ledger.Transaction
 		}
 		if filters.CategoryID.Valid {
 			stmt = stmt.Where(sq.Eq{"category_id": filters.CategoryID.String})
+		}
+		if filters.MerchantID.Valid {
+			stmt = stmt.Where(sq.Eq{"merchant_id": filters.MerchantID.String})
 		}
 		if filters.Limit.Valid {
 			stmt = stmt.Limit(filters.Limit.Uint64)

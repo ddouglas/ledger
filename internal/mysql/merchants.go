@@ -72,13 +72,13 @@ func (r *merchantRepository) MerchantByAlias(ctx context.Context, alias string) 
 
 func (r *merchantRepository) Merchants(ctx context.Context) ([]*ledger.Merchant, error) {
 
-	query, args, err := sq.Select(merchantsColumns...).From(merchantsTable).ToSql()
+	query, args, err := sq.Select(merchantsColumns...).From(merchantsTable).OrderBy("name asc").ToSql()
 	if err != nil {
 		return nil, errors.Errorf("failed to generate sql stmt: %s", err)
 	}
 
 	var merchants = make([]*ledger.Merchant, 0)
-	err = r.db.GetContext(ctx, merchants, query, args...)
+	err = r.db.SelectContext(ctx, &merchants, query, args...)
 	return merchants, err
 
 }
@@ -137,7 +137,7 @@ func (r *merchantRepository) MerchantAliasesByMerchantID(ctx context.Context, me
 	}
 
 	var aliases = make([]*ledger.MerchantAlias, 0)
-	err = r.db.SelectContext(ctx, aliases, query, args...)
+	err = r.db.SelectContext(ctx, &aliases, query, args...)
 	return aliases, err
 
 }

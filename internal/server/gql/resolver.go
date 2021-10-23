@@ -54,6 +54,7 @@ func buildTransactionFilters(f *model.TransactionFilter) *ledger.TransactionFilt
 		return t
 	}
 	t.CategoryID = null.StringFromPtr(f.CategoryID)
+	t.MerchantID = null.StringFromPtr(f.MerchantID)
 	t.FromTransactionID = null.StringFromPtr(f.FromTransactionID)
 	t.Limit = null.Uint64FromPtr(f.Limit)
 	if f.StartDate != nil {

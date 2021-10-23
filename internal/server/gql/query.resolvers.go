@@ -6,7 +6,6 @@ package resolvers
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
@@ -34,6 +33,10 @@ func (r *queryResolver) LinkToken(ctx context.Context) (string, error) {
 	}
 
 	return token, nil
+}
+
+func (r *queryResolver) Merchants(ctx context.Context) ([]*ledger.Merchant, error) {
+	return r.transaction.Merchants(ctx)
 }
 
 func (r *queryResolver) TransactionsPaginated(ctx context.Context, itemID string, accountID string, filters *model.TransactionFilter) (*ledger.PaginatedTransactions, error) {
@@ -95,17 +98,31 @@ func (r *queryResolver) Transactions(ctx context.Context, itemID string, account
 	return transactions, nil
 }
 
+func (r *queryResolver) TransactionReceipt(ctx context.Context, itemID string, accountID string, transactionID string) (*ledger.TransactionReceipt, error) {
+	user := internal.UserFromContext(ctx)
+
+	_, err := r.item.ItemByUserID(ctx, user.ID, itemID)
+	if err != nil {
+		r.logger.WithError(err).Error("failed to verify ownership")
+		return nil, errors.New("failed to verify ownership")
+	}
+
+	_, err = r.account.Account(ctx, itemID, accountID)
+	if err != nil {
+		r.logger.WithError(err).Error("failed to fetch account")
+		return nil, errors.New("failed to fetch account")
+	}
+
+	presigned, err := r.transaction.TransactionReceiptPresignedURL(ctx, itemID, transactionID)
+	if err != nil {
+		r.logger.WithError(err).Error("failed to fetch presigned url")
+		return nil, errors.New("failed to fetch presigned url")
+	}
+
+	return presigned, nil
+}
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *queryResolver) Accounts(ctx context.Context, itemID string) ([]*ledger.Account, error) {
-	panic(fmt.Errorf("not implemented"))
-}

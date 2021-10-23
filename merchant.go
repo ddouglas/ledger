@@ -27,8 +27,8 @@ type Merchant struct {
 
 type MerchantAlias struct {
 	AliasID    string    `db:"alias_id" json:"aliasID"`
-	MerchantID string    `db:"id" json:"id"`
-	Alias      string    `db:"name" json:"name"`
+	MerchantID string    `db:"merchant_id" json:"id"`
+	Alias      string    `db:"alias" json:"name"`
 	CreatedAt  time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt  time.Time `db:"updated_at" json:"updatedAt"`
 }

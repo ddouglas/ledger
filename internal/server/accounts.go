@@ -300,18 +300,18 @@ func (s *server) handleGetAccountTransactionReceiptURL(w http.ResponseWriter, r 
 		return
 	}
 
-	presigned, err := s.transaction.TransactionReceiptPresignedURL(ctx, itemID, transactionID)
-	if err != nil {
-		GetLogEntry(r).WithError(err).Error()
-		s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to generate presigned url for transaction receipt"))
-		return
-	}
+	// presigned, err := s.transaction.TransactionReceiptPresignedURL(ctx, itemID, transactionID)
+	// if err != nil {
+	// 	GetLogEntry(r).WithError(err).Error()
+	// 	s.writeError(ctx, w, http.StatusBadRequest, errors.New("failed to generate presigned url for transaction receipt"))
+	// 	return
+	// }
 
-	s.writeResponse(ctx, w, http.StatusOK, struct {
-		URL string `json:"url"`
-	}{
-		URL: presigned,
-	})
+	// s.writeResponse(ctx, w, http.StatusOK, struct {
+	// 	URL string `json:"url"`
+	// }{
+	// 	URL: presigned,
+	// })
 
 }
 
@@ -392,12 +392,12 @@ func (s *server) handlePostAccountTransactionReceipt(w http.ResponseWriter, r *h
 	// Read from the decoder now into our second buffer
 	_, _ = buf2.ReadFrom(b64Decoder)
 
-	err = s.transaction.AddReceiptToTransaction(ctx, itemID, transactionID, buf2)
-	if err != nil {
-		GetLogEntry(r).WithError(err).Error()
-		s.writeError(ctx, w, http.StatusInternalServerError, errors.New("failed to add file to transaction"))
-		return
-	}
+	// err = s.transaction.AddReceiptToTransaction(ctx, itemID, transactionID, buf2)
+	// if err != nil {
+	// 	GetLogEntry(r).WithError(err).Error()
+	// 	s.writeError(ctx, w, http.StatusInternalServerError, errors.New("failed to add file to transaction"))
+	// 	return
+	// }
 	s.writeResponse(ctx, w, http.StatusNoContent, nil)
 
 }

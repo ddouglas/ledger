@@ -10,6 +10,7 @@ import (
 
 type TransactionFilter struct {
 	CategoryID        *string          `json:"categoryID"`
+	MerchantID        *string          `json:"merchantID"`
 	FromTransactionID *string          `json:"fromTransactionID"`
 	Limit             *uint64          `json:"limit"`
 	StartDate         *string          `json:"startDate"`

@@ -150,6 +150,7 @@ func (s *server) buildRouter() *chi.Mux {
 				),
 			)
 			handler.AddTransport(transport.POST{})
+			handler.AddTransport(transport.MultipartForm{})
 			handler.Use(extension.Introspection{})
 			handler.SetQueryCache(lru.New(1000))
 			handler.Use(extension.AutomaticPersistedQuery{

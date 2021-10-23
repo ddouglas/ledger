@@ -5,6 +5,9 @@ type Query {
 
     linkToken: String!
 
+    merchants: [Merchant!]
+
     transactionsPaginated(itemID: String!, accountID: String!, filters: TransactionFilter): PaginatedTransactions!
     transactions(itemID: String!, accountID: String!, filters: TransactionFilter): [Transaction]!
+    transactionReceipt(itemID: String!, accountID: String!, transactionID: String!): TransactionReceipt
 }

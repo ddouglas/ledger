@@ -39,7 +39,7 @@ type Transaction struct {
 	ReceiptType            null.String `db:"receipt_type" json:"receiptType"`
 	PaymentChannel         string      `db:"payment_channel" json:"paymentChannel"` // ENUM: online, in store, other
 	MerchantID             string      `db:"merchant_id" json:"merchantID"`
-	MerchantName           null.String `json:"merchantName"`
+	MerchantName           null.String `json:"merchant_name"`
 	UnofficialCurrencyCode null.String `db:"unofficial_currency_code" json:"unofficialCurrencyCode"`
 	ISOCurrencyCode        null.String `db:"iso_currency_code" json:"isoCurrencyCode"`
 	Amount                 float64     `db:"amount" json:"amount"`
@@ -58,18 +58,19 @@ type Transaction struct {
 	Location    *TransactionLocation    `json:"location" diff:"-"`
 }
 
-func (r *Transaction) Filename() (string, error) {
-	if !r.HasReceipt || !r.ReceiptType.Valid {
-		return "", fmt.Errorf("transaction does not have a receipt associated with it")
-	}
-
-	return fmt.Sprintf("%s.%s", r.TransactionID, r.ReceiptType.String), nil
+func (r *Transaction) Filename() string {
+	return fmt.Sprintf("%s.pdf", r.TransactionID)
 }
 
 type TransactionCategory struct {
 	CategoryID string      `db:"category_id" json:"categoryID"`
 	Category   SliceString `db:"category" json:"category"`
 	Count      uint        `db:"count" json:"count"`
+}
+
+type TransactionReceipt struct {
+	Get null.String
+	Put null.String
 }
 
 type TransactionFilter struct {
@@ -81,6 +82,7 @@ type TransactionFilter struct {
 	DateInclusive     null.Bool
 	AmountDir         null.Float64
 	CategoryID        null.String
+	MerchantID        null.String
 }
 
 func (f *TransactionFilter) BuildFromURLValues(values url.Values) error {
@@ -195,6 +197,26 @@ func (t *Transaction) FromPlaidTransaction(transaction plaid.Transaction) {
 		Country:     null.NewString(transaction.Location.Country, transaction.Location.Country != ""),
 	}
 
+}
+
+func (t *Transaction) FromUpdateTransactionInput(input *UpdateTransactionInput) {
+
+	if input.Name.Valid {
+		t.Name = input.Name.String
+	}
+
+	if input.MerchantID.Valid {
+		t.MerchantID = input.MerchantID.String
+	}
+
+	t.CategoryID = input.CategoryID
+
+}
+
+type UpdateTransactionInput struct {
+	Name       null.String
+	MerchantID null.String
+	CategoryID null.String
 }
 
 type Categories []string

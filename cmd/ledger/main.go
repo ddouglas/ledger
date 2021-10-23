@@ -13,7 +13,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
@@ -130,22 +129,22 @@ func buildCore() *core {
 func buildAWSConfig() aws.Config {
 	awsConf, err := awsConfig.LoadDefaultConfig(
 		context.TODO(),
-		awsConfig.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(
-				cfg.Spaces.ClientID,
-				cfg.Spaces.ClientSecret,
-				"",
-			),
-		),
-		awsConfig.WithEndpointResolver(aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
-			if service == s3.ServiceID {
-				return aws.Endpoint{
-					URL: cfg.Spaces.Endpoint,
-				}, nil
-			}
+		// awsConfig.WithCredentialsProvider(
+		// 	credentials.NewStaticCredentialsProvider(
+		// 		cfg.Spaces.ClientID,
+		// 		cfg.Spaces.ClientSecret,
+		// 		"",
+		// 	),
+		// ),
+		// awsConfig.WithEndpointResolver(aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
+		// 	if service == s3.ServiceID {
+		// 		return aws.Endpoint{
+		// 			URL: cfg.Spaces.Endpoint,
+		// 		}, nil
+		// 	}
 
-			return aws.Endpoint{}, nil
-		})),
+		// 	return aws.Endpoint{}, nil
+		// })),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("failed to load aws configuration: %s", err))
@@ -321,7 +320,7 @@ func actionAPI(c *cli.Context) error {
 		core.logger,
 		core.gateway,
 		cache,
-		cfg.Spaces.Bucket,
+		cfg.S3.Bucket,
 		core.repos.transaction,
 		core.repos.merchant,
 	)
@@ -337,7 +336,7 @@ func actionAPI(c *cli.Context) error {
 		core.repos.webhook,
 	)
 
-	loaders := dataloaders.New(item)
+	loaders := dataloaders.New(item, transaction)
 
 	server := server.New(
 		cfg.API.Port,
@@ -407,7 +406,7 @@ func actionWorker(c *cli.Context) error {
 		core.logger,
 		core.gateway,
 		cache,
-		cfg.Spaces.Bucket,
+		cfg.S3.Bucket,
 		core.repos.transaction,
 		core.repos.merchant,
 	)

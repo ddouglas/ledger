@@ -1,0 +1,4 @@
+type Mutation {
+    deleteReceipt(itemID: String!, transactionID: String!): Boolean!
+    updateTransaction(itemID: String!, transactionID: String!, input: UpdateTransactionInput): Transaction!
+}

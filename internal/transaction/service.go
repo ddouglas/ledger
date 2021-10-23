@@ -2,16 +2,15 @@
 package transaction
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
 	"math/rand"
-	"net/http"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pkg/errors"
@@ -27,10 +26,11 @@ import (
 
 type Service interface {
 	ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error
-	TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error)
-	AddReceiptToTransaction(ctx context.Context, itemID, transactionID string, buffer *bytes.Buffer) error
+	TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (*ledger.TransactionReceipt, error)
+	AddReceiptToTransaction(ctx context.Context, itemID, transactionID string, file graphql.Upload) error
 	RemoveReceiptFromTransaction(ctx context.Context, itemID, transactionID string) error
 	ledger.TransactionRepository
+	ledger.MerchantRepository
 }
 
 type service struct {
@@ -364,91 +364,86 @@ func randString(n int) string {
 	return string(b)
 }
 
-func (s *service) TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error) {
+func (s *service) TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (*ledger.TransactionReceipt, error) {
 
-	urlStr, err := s.cache.FetchPresignedURL(ctx, transactionID)
-	if err != nil {
-		s.logger.WithError(err).Error("failed to fetch url from cache")
-	}
+	// urlStr, err := s.cache.FetchPresignedURL(ctx, transactionID)
+	// if err != nil {
+	// 	s.logger.WithError(err).Error("failed to fetch url from cache")
+	// }
 
-	if urlStr != "" {
-		return urlStr, nil
-	}
+	// if urlStr != "" {
+	// 	return urlStr, nil
+	// }
 
 	transaction, err := s.Transaction(ctx, itemID, transactionID)
 	if err != nil {
-		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to fetch transaction")
-	}
-
-	filename, err := transaction.Filename()
-	if err != nil {
-		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] transaction does not have a receipt file associated with it")
-	}
-
-	if len(strings.Split(filename, ".")) != 2 {
-		return "", errors.New("[transaction.TransactionReceiptPresignedURL] unable to determine file name")
-	}
-
-	_, err = s.s3.HeadObject(ctx, &s3.HeadObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key:    aws.String(filename),
-	})
-	if err != nil {
-		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to fetch receipt from object store")
+		return nil, errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to fetch transaction")
 	}
 
 	psClient := s3.NewPresignClient(s.s3)
+	expireDuration := time.Minute * 10
 
-	expireDuration := time.Hour
+	receipt := new(ledger.TransactionReceipt)
 
-	url, err := psClient.PresignGetObject(ctx, &s3.GetObjectInput{
+	_, err = s.s3.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(filename),
+		Key:    aws.String(transaction.Filename()),
+	})
+	if err == nil {
+		get, err := psClient.PresignGetObject(ctx, &s3.GetObjectInput{
+			Bucket: aws.String(s.bucket),
+			Key:    aws.String(transaction.Filename()),
+		}, s3.WithPresignExpires(expireDuration))
+		if err != nil {
+			return nil, errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to generate presigned get url for object")
+		}
+
+		receipt.Get = null.NewString(get.URL, get.URL != "")
+	}
+
+	put, err := psClient.PresignPutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(transaction.Filename()),
 	}, s3.WithPresignExpires(expireDuration))
 	if err != nil {
-		return "", errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to generate presigned url for object")
+		return nil, errors.Wrap(err, "[transaction.TransactionReceiptPresignedURL] failed to generate presigned put url for object")
 	}
 
-	err = s.cache.CachePresignedURL(ctx, transactionID, url.URL, expireDuration)
-	if err != nil {
-		s.logger.WithError(err).Error("failed to cache url")
-	}
-
-	return url.URL, nil
+	receipt.Put = null.NewString(put.URL, put.URL != "")
+	return receipt, nil
 
 }
 
-func (s *service) AddReceiptToTransaction(ctx context.Context, itemID, transactionID string, buffer *bytes.Buffer) error {
+func (s *service) AddReceiptToTransaction(ctx context.Context, itemID, transactionID string, file graphql.Upload) error {
 
 	transaction, err := s.Transaction(ctx, itemID, transactionID)
 	if err != nil {
 		return errors.Wrap(err, "[transaction.AddReceiptToTransaction] failed to fetch transaction")
 	}
 
-	contentType := http.DetectContentType(buffer.Bytes())
-	err = validateContentType(contentType)
+	err = validateContentType(file.ContentType)
 	if err != nil {
 		return err
 	}
 
-	var ext string
-	switch contentType {
-	case "application/pdf":
-		ext = "pdf"
-	case "image/jpeg":
-		ext = "jpg"
-	}
-
 	obj := s3.PutObjectInput{
 		Bucket:      aws.String(s.bucket),
-		Key:         aws.String(fmt.Sprintf("%s.%s", transaction.TransactionID, ext)),
-		Body:        bytes.NewReader(buffer.Bytes()),
-		ContentType: aws.String(contentType),
+		Key:         aws.String(file.Filename),
+		Body:        file.File,
+		ContentType: aws.String(file.ContentType),
 	}
 
 	_, err = s.s3.PutObject(ctx, &obj)
 	if err != nil {
 		return errors.Wrap(err, "[transaction.AddReceiptToTransaction] failed to write file to s3")
+	}
+
+	var ext string
+	switch file.ContentType {
+	case "application/pdf":
+		ext = "pdf"
+	case "image/jpeg":
+		ext = "jpg"
 	}
 
 	transaction.HasReceipt = true
@@ -470,31 +465,22 @@ func (s *service) RemoveReceiptFromTransaction(ctx context.Context, itemID, tran
 		return errors.Wrap(err, "[transaction.RemoveReceiptFromTransaction] failed to fetch transaction")
 	}
 
-	if !transaction.HasReceipt {
+	_, err = s.s3.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(transaction.Filename()),
+	})
+	if err != nil {
+		// This should be because the file does not exist.
+		s.logger.WithError(err).Error("failed to head object")
 		return nil
 	}
 
-	input := s3.DeleteObjectInput{
+	_, err = s.s3.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(fmt.Sprintf("%s.%s", transaction.TransactionID, transaction.ReceiptType.String)),
-	}
-
-	_, err = s.s3.DeleteObject(ctx, &input)
+		Key:    aws.String(transaction.Filename()),
+	})
 	if err != nil {
 		return errors.Wrap(err, "[transaction.RemoveReceiptFromTransaction] failed to delete transaction with S3")
-	}
-
-	err = s.cache.DeletePresignURL(ctx, transactionID)
-	if err != nil {
-		return errors.Wrap(err, "[transaction.RemoveReceiptFromTransaction] failed to delete transaction in Cache")
-	}
-
-	transaction.HasReceipt = false
-	transaction.ReceiptType = null.NewString("", false)
-
-	_, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
-	if err != nil {
-		return errors.Wrap(err, "[transaction.AddReceiptToTransaction] failed to update has_receipt flag on transaction")
 	}
 
 	return nil

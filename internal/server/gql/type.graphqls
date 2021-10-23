@@ -2,6 +2,7 @@ directive @goModel(model: String) on OBJECT | INPUT_OBJECT
 directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 scalar Time
 scalar Uint64
+scalar Upload
 
 type Account @goModel(model: "github.com/ddouglas/ledger.Account") {
     itemID: String!
@@ -47,6 +48,19 @@ type ItemStatus @goModel(model: "github.com/ddouglas/ledger.ItemStatus") {
     lastWebhook: WebhookStatus
 }
 
+type Merchant @goModel(model: "github.com/ddouglas/ledger.Merchant") {
+    id: String!
+    name: String!
+
+    aliases: [MerchantAlias]
+}
+
+type MerchantAlias @goModel(model: "github.com/ddouglas/ledger.MerchantAlias") {
+    aliasID: String!
+    merchantID: String!
+    alias: String!
+}
+
 type PlaidCategory @goModel(model: "github.com/ddouglas/ledger.PlaidCategory") {
     id: String
     name: String
@@ -80,7 +94,7 @@ type Transaction @goModel(model: "github.com/ddouglas/ledger.Transaction") {
     hasReceipt: Boolean!
     receiptType: String
     paymentChannel: String!
-    merchantName: String
+    merchantID: String
     unofficialCurrencyCode: String
     isoCurrencyCode: String
     amount: Float
@@ -93,10 +107,12 @@ type Transaction @goModel(model: "github.com/ddouglas/ledger.Transaction") {
     hiddenAt: Time
 
     category: PlaidCategory @goField(forceResolver: true)
+    merchant: Merchant!
 }
 
 input TransactionFilter {
     categoryID: String
+    merchantID: String
     fromTransactionID: String
     limit: Uint64
     startDate: String
@@ -109,6 +125,17 @@ input TransactionFilter {
 enum TransactionType {
     EXPENSES
     INCOME
+}
+
+type TransactionReceipt @goModel(model: "github.com/ddouglas/ledger.TransactionReceipt") {
+    get: String
+    put: String
+}
+
+input UpdateTransactionInput @goModel(model: "github.com/ddouglas/ledger.UpdateTransactionInput") {
+    name: String
+    merchantID: String
+    categoryID: String
 }
 
 type WebhookStatus @goModel(model: "github.com/plaid/plaid-go/plaid.WebhookStatus") {
