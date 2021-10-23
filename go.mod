@@ -20,7 +20,6 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lestrrat-go/jwx v1.2.1
 	github.com/newrelic/go-agent/v3 v3.13.0
-	github.com/newrelic/go-agent/v3/integrations/logcontext/nrlogrusplugin v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/plaid/plaid-go v0.0.0-20210525182452-1d0b06713a96
 	github.com/r3labs/diff v1.1.0

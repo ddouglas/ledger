@@ -5,6 +5,7 @@ import (
 
 	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal/account"
+	"github.com/ddouglas/ledger/internal/gateway"
 	"github.com/ddouglas/ledger/internal/item"
 	"github.com/ddouglas/ledger/internal/server/gql/dataloaders"
 	"github.com/ddouglas/ledger/internal/server/gql/model"
@@ -18,26 +19,32 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
+	logger *logrus.Logger
+
 	account     account.Service
 	loaders     dataloaders.Service
-	logger      *logrus.Logger
+	gateway     gateway.Service
 	item        item.Service
 	transaction transaction.Service
 }
 
 func New(
-	account account.Service,
-	loaders dataloaders.Service,
 	logger *logrus.Logger,
+
+	account account.Service,
+	gateway gateway.Service,
 	item item.Service,
+	loaders dataloaders.Service,
 	transaction transaction.Service,
 ) *Resolver {
 	return &Resolver{
-		loaders:     loaders,
-		item:        item,
-		transaction: transaction,
+		logger: logger,
+
 		account:     account,
-		logger:      logger,
+		gateway:     gateway,
+		item:        item,
+		loaders:     loaders,
+		transaction: transaction,
 	}
 }
 

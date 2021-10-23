@@ -92,7 +92,7 @@ type Transaction @goModel(model: "github.com/ddouglas/ledger.Transaction") {
     deletedAt: Time
     hiddenAt: Time
 
-    category: PlaidCategory
+    category: PlaidCategory @goField(forceResolver: true)
 }
 
 input TransactionFilter {

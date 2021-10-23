@@ -29,15 +29,6 @@ func (s *server) cors(next http.Handler) http.Handler {
 	})
 }
 
-// Cors middleware to allow frontend consumption
-func (s *server) noRobots(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Robots-Tag", "noindex")
-
-		next.ServeHTTP(w, r)
-	})
-}
-
 func (s *server) authorization(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

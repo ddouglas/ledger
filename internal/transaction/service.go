@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"sort"
 	"strings"
@@ -40,6 +41,7 @@ type service struct {
 	bucket  string
 
 	ledger.TransactionRepository
+	ledger.MerchantRepository
 }
 
 var allowedFileTypes = []string{
@@ -53,6 +55,7 @@ func New(
 	cache cache.Service,
 	bucket string,
 	transaction ledger.TransactionRepository,
+	merchants ledger.MerchantRepository,
 ) Service {
 	return &service{
 		gateway:               gateway,
@@ -60,12 +63,13 @@ func New(
 		s3:                    s3,
 		bucket:                bucket,
 		TransactionRepository: transaction,
+		MerchantRepository:    merchants,
 		logger:                logger,
 	}
 
 }
 
-func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error {
+func (s *service) ProcessTransactions2(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error {
 
 	for _, plaidTransaction := range newTrans {
 
@@ -73,7 +77,6 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 			"id":   plaidTransaction.TransactionID,
 			"date": plaidTransaction.Date.Format("2006-01-02"),
 		})
-		entry.Info("processing transaction")
 
 		transaction, err := s.Transaction(ctx, item.ItemID, plaidTransaction.TransactionID)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -200,6 +203,165 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 
 	return nil
 
+}
+
+func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error {
+
+	for _, plaidTransaction := range newTrans {
+		err := s.processTransaction(ctx, item, plaidTransaction)
+		if err != nil {
+			s.logger.WithError(err).Error("failed to process transaction")
+		}
+	}
+
+	return nil
+
+}
+
+func (s *service) processTransaction(ctx context.Context, item *ledger.Item, plaidTransaction *ledger.Transaction) error {
+	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
+		"id":   plaidTransaction.TransactionID,
+		"date": plaidTransaction.Date.Format("2006-01-02"),
+	})
+
+	transaction, err := s.Transaction(ctx, item.ItemID, plaidTransaction.TransactionID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		entry.WithError(err).Error()
+		return errors.New("failed to fetch transactions from DB")
+	}
+
+	if errors.Is(err, sql.ErrNoRows) {
+
+		plaidTransaction.ItemID = item.ItemID
+
+		err = s.handleTransactionMerchant(ctx, plaidTransaction)
+		if err != nil {
+			entry.WithError(err).Error()
+			return errors.Wrap(err, "failed to process merchant")
+		}
+
+		_, err = s.CreateTransaction(ctx, plaidTransaction)
+		if err != nil {
+			entry.WithError(err).Error()
+			return errors.Errorf("failed to insert transaction %s into DB", plaidTransaction.TransactionID)
+		}
+
+		if plaidTransaction.PendingTransactionID.Valid {
+			entry = entry.WithField("pending_transaction_id", plaidTransaction.PendingTransactionID.String)
+
+			pendingTransaction, err := s.Transaction(ctx, plaidTransaction.ItemID, plaidTransaction.PendingTransactionID.String)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				entry.WithError(err).Error()
+				return errors.New("unexpected error encountered querying for transactions, please check logs")
+			}
+
+			if err != nil && errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+
+			pendingTransaction.HiddenAt.SetValid(time.Now())
+			_, err = s.UpdateTransaction(ctx, pendingTransaction.TransactionID, pendingTransaction)
+			if err != nil {
+				entry.WithError(err).Error()
+				return errors.Errorf("failed to update transaction %s", pendingTransaction.TransactionID)
+			}
+
+			entry.Info("pending transaction updated successfully")
+
+		}
+
+		entry.Info("transaction created successfully")
+
+		return nil
+
+	}
+
+	if !transaction.Pending {
+		return nil
+	}
+
+	entry.Info("existing transaction discovered, updating record")
+
+	changelog, err := diff.Diff(transaction, plaidTransaction)
+	if err != nil {
+		entry.WithError(err).Error()
+		return errors.New("unable to determine updated attributes of transaction")
+	}
+
+	if len(changelog) == 0 {
+		return nil
+	}
+
+	err = deepcopier.Copy(plaidTransaction).To(transaction)
+	if err != nil {
+		entry.WithError(err).Error()
+		return errors.Errorf("failed to copy plaidTransaction to ledgerTransaction")
+	}
+
+	_, err = s.UpdateTransaction(ctx, transaction.TransactionID, transaction)
+	if err != nil {
+		entry.WithError(err).Error()
+		return errors.Errorf("failed to update transaction %s", transaction.TransactionID)
+	}
+
+	entry.Info("transaction updated successfully")
+	return nil
+}
+
+func (s *service) handleTransactionMerchant(ctx context.Context, transaction *ledger.Transaction) error {
+
+	merchantName := transaction.MerchantName.String
+	if merchantName == "" {
+		merchantName = "Unknown"
+	}
+
+	merchant, err := s.MerchantByAlias(ctx, merchantName)
+	if err == nil {
+		transaction.MerchantID = merchant.ID
+		return nil
+	}
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	// Error is sql.ErrNoRows, need to create an merchant and a merchant alias
+	merchant = &ledger.Merchant{
+		ID:   randString(32),
+		Name: merchantName,
+	}
+
+	alias := &ledger.MerchantAlias{
+		AliasID:    randString(32),
+		MerchantID: merchant.ID,
+		Alias:      merchantName,
+	}
+
+	_, err = s.MerchantRepository.CreateMerchant(ctx, merchant)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.MerchantRepository.CreateMerchantAlias(ctx, alias)
+	if err != nil {
+		return err
+	}
+
+	transaction.MerchantID = merchant.ID
+	return nil
+
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+var src = rand.NewSource(time.Now().UnixNano())
+
+func randString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[src.Int63()%int64(len(letterBytes))]
+	}
+	return string(b)
 }
 
 func (s *service) TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (string, error) {

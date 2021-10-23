@@ -44,6 +44,7 @@ type ResolverRoot interface {
 	Item() ItemResolver
 	PlaidCategory() PlaidCategoryResolver
 	Query() QueryResolver
+	Transaction() TransactionResolver
 }
 
 type DirectiveRoot struct {
@@ -115,8 +116,11 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Items        func(childComplexity int) int
-		Transactions func(childComplexity int, itemID string, accountID string, filters *model.TransactionFilter) int
+		Categories            func(childComplexity int) int
+		Items                 func(childComplexity int) int
+		LinkToken             func(childComplexity int) int
+		Transactions          func(childComplexity int, itemID string, accountID string, filters *model.TransactionFilter) int
+		TransactionsPaginated func(childComplexity int, itemID string, accountID string, filters *model.TransactionFilter) int
 	}
 
 	Transaction struct {
@@ -163,8 +167,14 @@ type PlaidCategoryResolver interface {
 	Hierarchy(ctx context.Context, obj *ledger.PlaidCategory) ([]string, error)
 }
 type QueryResolver interface {
+	Categories(ctx context.Context) ([]*ledger.PlaidCategory, error)
 	Items(ctx context.Context) ([]*ledger.Item, error)
-	Transactions(ctx context.Context, itemID string, accountID string, filters *model.TransactionFilter) (*ledger.PaginatedTransactions, error)
+	LinkToken(ctx context.Context) (string, error)
+	TransactionsPaginated(ctx context.Context, itemID string, accountID string, filters *model.TransactionFilter) (*ledger.PaginatedTransactions, error)
+	Transactions(ctx context.Context, itemID string, accountID string, filters *model.TransactionFilter) ([]*ledger.Transaction, error)
+}
+type TransactionResolver interface {
+	Category(ctx context.Context, obj *ledger.Transaction) (*ledger.PlaidCategory, error)
 }
 
 type executableSchema struct {
@@ -462,12 +472,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProductStatus.LastSuccessfulUpdate(childComplexity), true
 
+	case "Query.categories":
+		if e.complexity.Query.Categories == nil {
+			break
+		}
+
+		return e.complexity.Query.Categories(childComplexity), true
+
 	case "Query.items":
 		if e.complexity.Query.Items == nil {
 			break
 		}
 
 		return e.complexity.Query.Items(childComplexity), true
+
+	case "Query.linkToken":
+		if e.complexity.Query.LinkToken == nil {
+			break
+		}
+
+		return e.complexity.Query.LinkToken(childComplexity), true
 
 	case "Query.transactions":
 		if e.complexity.Query.Transactions == nil {
@@ -480,6 +504,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Transactions(childComplexity, args["itemID"].(string), args["accountID"].(string), args["filters"].(*model.TransactionFilter)), true
+
+	case "Query.transactionsPaginated":
+		if e.complexity.Query.TransactionsPaginated == nil {
+			break
+		}
+
+		args, err := ec.field_Query_transactionsPaginated_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.TransactionsPaginated(childComplexity, args["itemID"].(string), args["accountID"].(string), args["filters"].(*model.TransactionFilter)), true
 
 	case "Transaction.accountID":
 		if e.complexity.Transaction.AccountID == nil {
@@ -700,8 +736,14 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	{Name: "internal/server/gql/query.graphqls", Input: `type Query {
+    categories: [PlaidCategory!]
+
     items: [Item!]
-    transactions(itemID: String!, accountID: String!, filters: TransactionFilter): PaginatedTransactions!
+
+    linkToken: String!
+
+    transactionsPaginated(itemID: String!, accountID: String!, filters: TransactionFilter): PaginatedTransactions!
+    transactions(itemID: String!, accountID: String!, filters: TransactionFilter): [Transaction]!
 }
 `, BuiltIn: false},
 	{Name: "internal/server/gql/type.graphqls", Input: `directive @goModel(model: String) on OBJECT | INPUT_OBJECT
@@ -798,7 +840,7 @@ type Transaction @goModel(model: "github.com/ddouglas/ledger.Transaction") {
     deletedAt: Time
     hiddenAt: Time
 
-    category: PlaidCategory
+    category: PlaidCategory @goField(forceResolver: true)
 }
 
 input TransactionFilter {
@@ -841,6 +883,39 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_transactionsPaginated_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["itemID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("itemID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["itemID"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["accountID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountID"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["accountID"] = arg1
+	var arg2 *model.TransactionFilter
+	if tmp, ok := rawArgs["filters"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filters"))
+		arg2, err = ec.unmarshalOTransactionFilter2ᚖgithubᚗcomᚋddouglasᚋledgerᚋinternalᚋserverᚋgqlᚋmodelᚐTransactionFilter(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["filters"] = arg2
 	return args, nil
 }
 
@@ -2243,6 +2318,38 @@ func (ec *executionContext) _ProductStatus_lastSuccessfulUpdate(ctx context.Cont
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_categories(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Categories(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*ledger.PlaidCategory)
+	fc.Result = res
+	return ec.marshalOPlaidCategory2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐPlaidCategoryᚄ(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_items(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2273,6 +2380,83 @@ func (ec *executionContext) _Query_items(ctx context.Context, field graphql.Coll
 	res := resTmp.([]*ledger.Item)
 	fc.Result = res
 	return ec.marshalOItem2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐItemᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_linkToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().LinkToken(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_transactionsPaginated(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_transactionsPaginated_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().TransactionsPaginated(rctx, args["itemID"].(string), args["accountID"].(string), args["filters"].(*model.TransactionFilter))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ledger.PaginatedTransactions)
+	fc.Result = res
+	return ec.marshalNPaginatedTransactions2ᚖgithubᚗcomᚋddouglasᚋledgerᚐPaginatedTransactions(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_transactions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2312,9 +2496,9 @@ func (ec *executionContext) _Query_transactions(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ledger.PaginatedTransactions)
+	res := resTmp.([]*ledger.Transaction)
 	fc.Result = res
-	return ec.marshalNPaginatedTransactions2ᚖgithubᚗcomᚋddouglasᚋledgerᚐPaginatedTransactions(ctx, field.Selections, res)
+	return ec.marshalNTransaction2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3095,14 +3279,14 @@ func (ec *executionContext) _Transaction_category(ctx context.Context, field gra
 		Object:     "Transaction",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Category, nil
+		return ec.resolvers.Transaction().Category(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4768,6 +4952,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "categories":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_categories(ctx, field)
+				return res
+			})
 		case "items":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -4777,6 +4972,34 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_items(ctx, field)
+				return res
+			})
+		case "linkToken":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_linkToken(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "transactionsPaginated":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_transactionsPaginated(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "transactions":
@@ -4822,17 +5045,17 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 		case "itemID":
 			out.Values[i] = ec._Transaction_itemID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "accountID":
 			out.Values[i] = ec._Transaction_accountID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "transactionID":
 			out.Values[i] = ec._Transaction_transactionID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "pendingTransactionID":
 			out.Values[i] = ec._Transaction_pendingTransactionID(ctx, field, obj)
@@ -4841,24 +5064,24 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 		case "name":
 			out.Values[i] = ec._Transaction_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "pending":
 			out.Values[i] = ec._Transaction_pending(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "hasReceipt":
 			out.Values[i] = ec._Transaction_hasReceipt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "receiptType":
 			out.Values[i] = ec._Transaction_receiptType(ctx, field, obj)
 		case "paymentChannel":
 			out.Values[i] = ec._Transaction_paymentChannel(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "merchantName":
 			out.Values[i] = ec._Transaction_merchantName(ctx, field, obj)
@@ -4877,7 +5100,7 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 		case "date":
 			out.Values[i] = ec._Transaction_date(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "dateTime":
 			out.Values[i] = ec._Transaction_dateTime(ctx, field, obj)
@@ -4886,7 +5109,16 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 		case "hiddenAt":
 			out.Values[i] = ec._Transaction_hiddenAt(ctx, field, obj)
 		case "category":
-			out.Values[i] = ec._Transaction_category(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Transaction_category(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5254,6 +5486,16 @@ func (ec *executionContext) marshalNPaginatedTransactions2ᚖgithubᚗcomᚋddou
 	return ec._PaginatedTransactions(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPlaidCategory2ᚖgithubᚗcomᚋddouglasᚋledgerᚐPlaidCategory(ctx context.Context, sel ast.SelectionSet, v *ledger.PlaidCategory) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._PlaidCategory(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -5282,6 +5524,44 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNTransaction2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx context.Context, sel ast.SelectionSet, v []*ledger.Transaction) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOTransaction2ᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
 }
 
 func (ec *executionContext) marshalNTransaction2ᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx context.Context, sel ast.SelectionSet, v *ledger.Transaction) graphql.Marshaler {
@@ -5697,6 +5977,53 @@ func (ec *executionContext) marshalOItemStatus2githubᚗcomᚋddouglasᚋledger�
 	return ec._ItemStatus(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalOPlaidCategory2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐPlaidCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*ledger.PlaidCategory) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPlaidCategory2ᚖgithubᚗcomᚋddouglasᚋledgerᚐPlaidCategory(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOPlaidCategory2ᚖgithubᚗcomᚋddouglasᚋledgerᚐPlaidCategory(ctx context.Context, sel ast.SelectionSet, v *ledger.PlaidCategory) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -5844,6 +6171,13 @@ func (ec *executionContext) marshalOTransaction2ᚕᚖgithubᚗcomᚋddouglasᚋ
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOTransaction2ᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx context.Context, sel ast.SelectionSet, v *ledger.Transaction) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Transaction(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOTransactionFilter2ᚖgithubᚗcomᚋddouglasᚋledgerᚋinternalᚋserverᚋgqlᚋmodelᚐTransactionFilter(ctx context.Context, v interface{}) (*model.TransactionFilter, error) {

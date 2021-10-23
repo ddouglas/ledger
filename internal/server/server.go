@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"net/http"
-	"strings"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -42,8 +40,6 @@ type server struct {
 	item        item.Service
 	transaction transaction.Service
 
-	frontend fs.FS
-
 	server *http.Server
 }
 
@@ -61,11 +57,9 @@ func New(
 	item item.Service,
 	transaction transaction.Service,
 
-	frontend fs.FS,
 ) *server {
 
 	s := &server{
-		frontend:    frontend,
 		newrelic:    newrelic,
 		port:        port,
 		logger:      logger,
@@ -88,7 +82,7 @@ func New(
 }
 
 func (s *server) Run() error {
-	s.logger.WithField("service", "Server").Infof("Starting on Port %d", s.port)
+	s.logger.WithField("service", "server").Infof("Starting on Port %d", s.port)
 	return s.server.ListenAndServe()
 }
 
@@ -100,8 +94,6 @@ func (s *server) GracefullyShutdown(ctx context.Context) error {
 
 func (s *server) buildRouter() *chi.Mux {
 	r := chi.NewRouter()
-
-	r.Get("/*", http.HandlerFunc(s.fsWrapper(http.FS(s.frontend))))
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(
@@ -147,10 +139,11 @@ func (s *server) buildRouter() *chi.Mux {
 				generated.NewExecutableSchema(
 					generated.Config{
 						Resolvers: resolvers.New(
-							s.account,
-							s.loaders,
 							s.logger,
+							s.account,
+							s.gateway,
 							s.item,
+							s.loaders,
 							s.transaction,
 						),
 					},
@@ -168,57 +161,26 @@ func (s *server) buildRouter() *chi.Mux {
 
 	})
 
-	PrintRoutes(r)
-
 	return r
 }
 
-// // FileServer is serving static files
-// func FileServer(r chi.Router, public string, static string) {
-
-// 	if strings.ContainsAny(public, "{}*") {
-// 		panic("FileServer does not permit URL parameters.")
-// 	}
-
-// 	root, _ := filepath.Abs(static)
-// 	if _, err := os.Stat(root); os.IsNotExist(err) {
-// 		panic("Static Documents Directory Not Found")
-// 	}
-
-// 	fs := http.StripPrefix(public, http.FileServer(http.Dir(root)))
-
-// 	if public != "/" && public[len(public)-1] != '/' {
-// 		r.Get(public, http.RedirectHandler(public+"/", 301).ServeHTTP)
-// 		public += "/"
-// 	}
-
-// 	r.Get(public+"*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		file := strings.Replace(r.RequestURI, public, "/", 1)
-// 		if _, err := os.Stat(root + file); os.IsNotExist(err) {
-// 			http.ServeFile(w, r, path.Join(root, "index.html"))
-// 			return
+// func PrintRoutes(r chi.Routes) {
+// 	var printRoutes func(parentPattern string, r chi.Routes)
+// 	printRoutes = func(parentPattern string, r chi.Routes) {
+// 		rts := r.Routes()
+// 		parentPattern = strings.TrimSuffix(parentPattern, "/*")
+// 		for _, rt := range rts {
+// 			if rt.SubRoutes == nil {
+// 				fmt.Println(parentPattern, "+", rt.Pattern)
+// 			} else {
+// 				pat := rt.Pattern
+// 				subRoutes := rt.SubRoutes
+// 				printRoutes(parentPattern+pat, subRoutes)
+// 			}
 // 		}
-// 		fs.ServeHTTP(w, r)
-// 	}))
+// 	}
+// 	printRoutes("", r)
 // }
-
-func PrintRoutes(r chi.Routes) {
-	var printRoutes func(parentPattern string, r chi.Routes)
-	printRoutes = func(parentPattern string, r chi.Routes) {
-		rts := r.Routes()
-		parentPattern = strings.TrimSuffix(parentPattern, "/*")
-		for _, rt := range rts {
-			if rt.SubRoutes == nil {
-				fmt.Println(parentPattern, "+", rt.Pattern)
-			} else {
-				pat := rt.Pattern
-				subRoutes := rt.SubRoutes
-				printRoutes(parentPattern+pat, subRoutes)
-			}
-		}
-	}
-	printRoutes("", r)
-}
 
 func closeRequestBody(ctx context.Context, r *http.Request) {
 	err := r.Body.Close()

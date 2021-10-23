@@ -38,11 +38,23 @@ func (r *plaidCategoryResolver) Hierarchy(ctx context.Context, obj *ledger.Plaid
 	return []string(obj.Hierarchy), nil
 }
 
+func (r *transactionResolver) Category(ctx context.Context, obj *ledger.Transaction) (*ledger.PlaidCategory, error) {
+	if !obj.CategoryID.Valid {
+		return nil, nil
+	}
+
+	return r.loaders.CategoryLoader().Load(ctx, obj.CategoryID.String)
+}
+
 // Item returns generated.ItemResolver implementation.
 func (r *Resolver) Item() generated.ItemResolver { return &itemResolver{r} }
 
 // PlaidCategory returns generated.PlaidCategoryResolver implementation.
 func (r *Resolver) PlaidCategory() generated.PlaidCategoryResolver { return &plaidCategoryResolver{r} }
 
+// Transaction returns generated.TransactionResolver implementation.
+func (r *Resolver) Transaction() generated.TransactionResolver { return &transactionResolver{r} }
+
 type itemResolver struct{ *Resolver }
 type plaidCategoryResolver struct{ *Resolver }
+type transactionResolver struct{ *Resolver }

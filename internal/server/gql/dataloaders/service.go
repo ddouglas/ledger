@@ -12,6 +12,7 @@ import (
 
 type Service interface {
 	AccountsByItemIDLoader() *generated.AccountsByItemIDLoader
+	CategoryLoader() *generated.CategoryLoader
 	InstitutionLoader() *generated.InstitutionLoader
 }
 
@@ -71,6 +72,29 @@ func (s *service) AccountsByItemIDLoader() *generated.AccountsByItemIDLoader {
 				}
 
 				results[i] = records
+			}
+
+			return results, nil
+		},
+	})
+}
+
+func (s *service) CategoryLoader() *generated.CategoryLoader {
+	return generated.NewCategoryLoader(generated.CategoryLoaderConfig{
+		MaxBatch: s.batch,
+		Wait:     s.wait,
+		Fetch: func(ctx context.Context, keys []string) ([]*ledger.PlaidCategory, []error) {
+			var errors = make([]error, 0)
+			var results = make([]*ledger.PlaidCategory, len(keys))
+
+			for i, k := range keys {
+				record, err := s.item.PlaidCategory(ctx, k)
+				if err != nil {
+					errors = append(errors, err)
+					return nil, errors
+				}
+
+				results[i] = record
 			}
 
 			return results, nil

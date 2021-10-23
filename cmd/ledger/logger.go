@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/newrelic/go-agent/v3/integrations/logcontext/nrlogrusplugin"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -59,7 +59,9 @@ func buildLogger() {
 	})
 
 	logger.SetLevel(level)
-	logrus.SetFormatter(nrlogrusplugin.ContextFormatter{})
+	logger.SetFormatter(&logrus.TextFormatter{
+		DisableQuote: true,
+	})
 
 }
 
@@ -77,7 +79,7 @@ func (w *writerHook) Fire(entry *logrus.Entry) error {
 	var service string
 	var ok bool
 	if service, ok = data["service"].(string); ok {
-		message = fmt.Sprintf("[%s] %s", service, message)
+		message = fmt.Sprintf("[%s] %s", strings.ToLower(service), message)
 		delete(data, "service")
 		entry.Data = data
 		entry.Message = message
@@ -99,12 +101,12 @@ func (w *writerHook) Fire(entry *logrus.Entry) error {
 
 	}
 
-	line, err := entry.String()
+	line, err := entry.Bytes()
 	if err != nil {
 		return err
 	}
 
-	_, err = w.Writer.Write([]byte(line))
+	_, err = w.Writer.Write(line)
 	return err
 
 }

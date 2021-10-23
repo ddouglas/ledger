@@ -1,4 +1,10 @@
 type Query {
+    categories: [PlaidCategory!]
+
     items: [Item!]
-    transactions(itemID: String!, accountID: String!, filters: TransactionFilter): PaginatedTransactions!
+
+    linkToken: String!
+
+    transactionsPaginated(itemID: String!, accountID: String!, filters: TransactionFilter): PaginatedTransactions!
+    transactions(itemID: String!, accountID: String!, filters: TransactionFilter): [Transaction]!
 }

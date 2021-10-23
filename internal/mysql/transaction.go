@@ -27,7 +27,7 @@ var transactionColumns = []string{
 	"has_receipt",
 	"receipt_type",
 	"payment_channel",
-	"merchant_name",
+	"merchant_id",
 	"unofficial_currency_code",
 	"iso_currency_code",
 	"amount",
@@ -35,7 +35,6 @@ var transactionColumns = []string{
 	"authorized_date",
 	"authorized_datetime",
 	"date",
-	"datetime",
 	"created_at",
 	"updated_at",
 }
@@ -94,7 +93,7 @@ func (r *transactionRepository) TransactionsPaginated(ctx context.Context, itemI
 			"item_id":    itemID,
 			"account_id": accountID,
 		}).
-		OrderBy("datetime desc")
+		OrderBy("date desc, amount desc")
 	stmt = transactionsQueryBuilder(stmt, filters)
 	query, args, err := stmt.ToSql()
 	if err != nil {
@@ -174,7 +173,7 @@ func (r *transactionRepository) CreateTransaction(ctx context.Context, transacti
 			transaction.HasReceipt,
 			transaction.ReceiptType,
 			transaction.PaymentChannel,
-			transaction.MerchantName,
+			transaction.MerchantID,
 			transaction.UnofficialCurrencyCode,
 			transaction.ISOCurrencyCode,
 			transaction.Amount,
@@ -182,7 +181,6 @@ func (r *transactionRepository) CreateTransaction(ctx context.Context, transacti
 			transaction.AuthorizedDate,
 			transaction.AuthorizedDateTime,
 			transaction.Date,
-			transaction.DateTime,
 			sq.Expr(`NOW()`),
 			sq.Expr(`NOW()`),
 		).ToSql()
@@ -201,28 +199,26 @@ func (r *transactionRepository) CreateTransaction(ctx context.Context, transacti
 
 func (r *transactionRepository) UpdateTransaction(ctx context.Context, transactionID string, transaction *ledger.Transaction) (*ledger.Transaction, error) {
 
-	query, args, err := sq.Update(transactionsTableName).
-		Set("item_id", transaction.ItemID).
-		Set("account_id", transaction.AccountID).
-		Set("transaction_id", transaction.TransactionID).
-		Set("pending_transaction_id", transaction.PendingTransactionID).
-		Set("category_id", transaction.CategoryID).
-		Set("name", transaction.Name).
-		Set("pending", transaction.Pending).
-		Set("has_receipt", transaction.HasReceipt).
-		Set("receipt_type", transaction.ReceiptType).
-		Set("payment_channel", transaction.PaymentChannel).
-		Set("merchant_name", transaction.MerchantName).
-		Set("unofficial_currency_code", transaction.UnofficialCurrencyCode).
-		Set("iso_currency_code", transaction.ISOCurrencyCode).
-		Set("amount", transaction.Amount).
-		Set("transaction_code", transaction.TransactionCode).
-		Set("authorized_date", transaction.AuthorizedDate).
-		Set("authorized_datetime", transaction.AuthorizedDateTime).
-		Set("date", transaction.Date).
-		Set("datetime", transaction.DateTime).
-		Set("updated_at", sq.Expr(`NOW()`)).
-		Where(sq.Eq{"transaction_id": transaction.TransactionID}).ToSql()
+	query, args, err := sq.Update(transactionsTableName).SetMap(map[string]interface{}{
+		"pending_transaction_id":   transaction.PendingTransactionID,
+		"category_id":              transaction.CategoryID,
+		"name":                     transaction.Name,
+		"pending":                  transaction.Pending,
+		"has_receipt":              transaction.HasReceipt,
+		"receipt_type":             transaction.ReceiptType,
+		"payment_channel":          transaction.PaymentChannel,
+		"merchant_id":              transaction.MerchantID,
+		"unofficial_currency_code": transaction.UnofficialCurrencyCode,
+		"iso_currency_code":        transaction.ISOCurrencyCode,
+		"amount":                   transaction.Amount,
+		"transaction_code":         transaction.TransactionCode,
+		"authorized_date":          transaction.AuthorizedDate,
+		"authorized_datetime":      transaction.AuthorizedDateTime,
+		"date":                     transaction.Date,
+		"updated_at":               sq.Expr(`NOW()`),
+	}).Where(sq.Eq{
+		"transaction_id": transaction.TransactionID,
+	}).ToSql()
 	if err != nil {
 		return nil, errors.Wrap(err, "[mysql.UpdateTransaction]")
 	}

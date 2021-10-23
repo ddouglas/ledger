@@ -38,7 +38,8 @@ type Transaction struct {
 	HasReceipt             bool        `db:"has_receipt" json:"hasReceipt"`
 	ReceiptType            null.String `db:"receipt_type" json:"receiptType"`
 	PaymentChannel         string      `db:"payment_channel" json:"paymentChannel"` // ENUM: online, in store, other
-	MerchantName           null.String `db:"merchant_name" json:"merchantName"`
+	MerchantID             string      `db:"merchant_id" json:"merchantID"`
+	MerchantName           null.String `json:"merchantName"`
 	UnofficialCurrencyCode null.String `db:"unofficial_currency_code" json:"unofficialCurrencyCode"`
 	ISOCurrencyCode        null.String `db:"iso_currency_code" json:"isoCurrencyCode"`
 	Amount                 float64     `db:"amount" json:"amount"`
