@@ -95,71 +95,68 @@ func (s *server) GracefullyShutdown(ctx context.Context) error {
 func (s *server) buildRouter() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Route("/api", func(r chi.Router) {
-		r.Use(
-			s.requestLogger(s.logger),
-			s.cors,
-			middleware.SetHeader("content-type", "application/json"),
-		)
+	r.Use(
+		s.requestLogger(s.logger),
+		s.cors,
+		middleware.SetHeader("content-type", "application/json"),
+	)
 
-		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	r.Get("/playground", playground.Handler("GraphQL playground", "/graphql"))
+
+	r.Post("/external/plaid/v1/webhook", s.handlePlaidPostV1Webhook)
+	r.Post("/external/plaid/v1/link/token", s.handlePlaidPostLinkToken)
+
+	r.Post("/external/auth0/v1/exchange", s.handleAuth0PostCodeExchange)
+
+	r.Group(func(r chi.Router) {
+		r.Use(s.authorization)
+		r.Get("/retool/auth", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
+		r.Get("/items", s.handleGetUserItems)
+		// r.Post("/items", s.handlePostUserItems)
+		r.Get("/items/{itemID}/accounts", s.handleGetItemAccounts)
+		r.Get("/items/{itemID}/accounts/{accountID}", s.handleGetItemAccount)
+		r.Get("/items/{itemID}", s.handleGetUserItem)
+		r.Delete("/items/{itemID}", s.handleDeleteUserItem)
 
-		r.Get("/playground", playground.Handler("GraphQL playground", "/api/graphql"))
-		r.Post("/external/plaid/v1/webhook", s.handlePlaidPostV1Webhook)
-		r.Get("/external/plaid/v1/categories", s.handlePlaidGetV1Categories)
-		r.Get("/external/plaid/v1/categories/{categoryID}", s.handlePlaidGetV1Category)
-		r.Get("/external/plaid/v1/institutions/{institutionID}", s.handlePlaidGetV1Institution)
-		r.Post("/external/auth0/v1/exchange", s.handleAuth0PostCodeExchange)
+		r.Get("/items/{itemID}/accounts/{accountID}/transactions", s.handleGetAccountTransactions)
+		r.Put("/items/{itemID}/accounts/{accountID}/transactions", s.handleUpdateTransactions)
 
-		r.Group(func(r chi.Router) {
-			r.Use(s.authorization)
-			r.Get("/items", s.handleGetUserItems)
-			r.Post("/items", s.handlePostUserItems)
-			r.Get("/items/{itemID}/accounts", s.handleGetItemAccounts)
-			r.Get("/items/{itemID}/accounts/{accountID}", s.handleGetItemAccount)
-			r.Get("/items/{itemID}", s.handleGetUserItem)
-			r.Delete("/items/{itemID}", s.handleDeleteUserItem)
+		r.Get("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}", s.handleGetAccountTransaction)
+		r.Patch("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}", s.handlePatchAccountTransaction)
 
-			r.Get("/items/{itemID}/accounts/{accountID}/transactions", s.handleGetAccountTransactions)
-			r.Put("/items/{itemID}/accounts/{accountID}/transactions", s.handleUpdateTransactions)
+		r.Get("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handleGetAccountTransactionReceiptURL)
+		r.Post("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handlePostAccountTransactionReceipt)
+		r.Delete("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handleDeleteAccountTransactionReceipt)
 
-			r.Get("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}", s.handleGetAccountTransaction)
-			r.Patch("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}", s.handlePatchAccountTransaction)
-
-			r.Get("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handleGetAccountTransactionReceiptURL)
-			r.Post("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handlePostAccountTransactionReceipt)
-			r.Delete("/items/{itemID}/accounts/{accountID}/transactions/{transactionID}/receipt", s.handleDeleteAccountTransactionReceipt)
-
-			r.Get("/external/plaid/v1/link/token", s.handlePlaidGetLinkToken)
-
-			// ##### GraphQL Handler #####
-			handler := handler.New(
-				generated.NewExecutableSchema(
-					generated.Config{
-						Resolvers: resolvers.New(
-							s.logger,
-							s.account,
-							s.gateway,
-							s.item,
-							s.loaders,
-							s.transaction,
-						),
-					},
-				),
-			)
-			handler.AddTransport(transport.POST{})
-			handler.AddTransport(transport.MultipartForm{})
-			handler.Use(extension.Introspection{})
-			handler.SetQueryCache(lru.New(1000))
-			handler.Use(extension.AutomaticPersistedQuery{
-				Cache: lru.New(100),
-			})
-
-			r.Handle("/graphql", handler)
+		// ##### GraphQL Handler #####
+		handler := handler.New(
+			generated.NewExecutableSchema(
+				generated.Config{
+					Resolvers: resolvers.New(
+						s.logger,
+						s.account,
+						s.gateway,
+						s.item,
+						s.loaders,
+						s.transaction,
+					),
+				},
+			),
+		)
+		handler.AddTransport(transport.POST{})
+		handler.AddTransport(transport.MultipartForm{})
+		handler.Use(extension.Introspection{})
+		handler.SetQueryCache(lru.New(1000))
+		handler.Use(extension.AutomaticPersistedQuery{
+			Cache: lru.New(100),
 		})
-
+		r.Handle("/graphql", handler)
 	})
 
 	return r

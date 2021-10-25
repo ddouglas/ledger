@@ -19,8 +19,9 @@ type config struct {
 	}
 
 	Redis struct {
-		Host string `required:"true"`
-		Port uint   `required:"true"`
+		Host     string `required:"true"`
+		Port     uint   `required:"true"`
+		Password string `required:"true"`
 	}
 
 	Log struct {
@@ -47,6 +48,8 @@ type config struct {
 		Environment  string `default:"sandbox"`
 		Webhook      string
 	}
+
+	UserRegistrationEnabled bool `envconfig:"USER_REGISTRATION_ENABLED" required:"true"`
 
 	S3 struct {
 		// ClientID     string `envconfig:"SPACES_CLIENT_ID" required:"true"`

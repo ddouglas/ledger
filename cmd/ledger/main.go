@@ -53,6 +53,7 @@ type core struct {
 }
 
 type repositories struct {
+	starter     ledger.Starter
 	account     ledger.AccountRepository
 	health      ledger.HealthRepository
 	item        ledger.ItemRepository
@@ -116,12 +117,13 @@ func buildCore() *core {
 	r := buildRedis()
 	repos := buildRepositories()
 
+	nr := buildNewRelic()
 	return &core{
 		logger:   logger,
 		redis:    r,
-		newrelic: buildNewRelic(),
+		newrelic: nr,
 		repos:    buildRepositories(),
-		gateway:  buildGateway(r, repos),
+		gateway:  buildGateway(r, nr, repos),
 		s3:       buildS3(),
 	}
 }
@@ -183,6 +185,7 @@ func buildRedis() *redis.Client {
 		MaxRetries:         5,
 		IdleTimeout:        time.Second * 10,
 		IdleCheckFrequency: time.Second * 5,
+		Password:           cfg.Redis.Password,
 	})
 
 	_, err := redisClient.Ping(context.Background()).Result()
@@ -218,7 +221,8 @@ func buildRepositories() *repositories {
 
 	db.SetConnMaxIdleTime(time.Second * 5)
 	db.SetConnMaxLifetime(time.Second * 30)
-	db.SetMaxOpenConns(100)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(15)
 
 	err = db.Ping()
 	if err != nil {
@@ -228,6 +232,7 @@ func buildRepositories() *repositories {
 	dbx = sqlx.NewDb(db, "mysql")
 
 	return &repositories{
+		starter:     mysql.NewTransactioner(dbx),
 		account:     mysql.NewAccountRepository(dbx),
 		health:      mysql.NewHealthRepository(dbx),
 		item:        mysql.NewItemRepository(dbx),
@@ -241,7 +246,7 @@ func buildRepositories() *repositories {
 
 }
 
-func buildGateway(r *redis.Client, repos *repositories) gateway.Service {
+func buildGateway(r *redis.Client, nr *newrelic.Application, repos *repositories) gateway.Service {
 
 	var plaidEnv plaid.Environment
 	switch cfg.Plaid.Environment {
@@ -266,14 +271,15 @@ func buildGateway(r *redis.Client, repos *repositories) gateway.Service {
 	cache := cache.New(r)
 
 	return gateway.New(
-		gateway.WithPlaidClient(c),
-		gateway.WithLanguage("en"),
-		gateway.WithCountryCode("US"),
-		gateway.WithProducts("auth", "transactions"),
-		gateway.WithWebhook(cfg.Plaid.Webhook),
-		gateway.WithLogger(logger),
-		gateway.WithCache(cache),
-		gateway.WithPlaidRepository(repos.plaid),
+		logger,
+		nr,
+		c,
+		cache,
+		[]string{"transactions", "auth"},
+		"en",
+		cfg.Plaid.Webhook,
+		[]string{"US"},
+		repos.plaid,
 	)
 
 }
@@ -292,6 +298,7 @@ func actionAPI(c *cli.Context) error {
 	cache := cache.New(core.redis)
 	oauth2 := oauth2Config()
 	user := user.New(
+		cfg.UserRegistrationEnabled,
 		core.repos.user,
 	)
 
@@ -304,13 +311,14 @@ func actionAPI(c *cli.Context) error {
 		cfg.Auth0.Issuer,
 	)
 
-	accounts := account.New(
+	account := account.New(
 		core.repos.account,
 	)
 
 	item := item.New(
-		core.repos.account,
+		account,
 		core.gateway,
+		user,
 		core.repos.item,
 		core.repos.plaid,
 	)
@@ -321,6 +329,7 @@ func actionAPI(c *cli.Context) error {
 		core.gateway,
 		cache,
 		cfg.S3.Bucket,
+		core.repos.starter,
 		core.repos.transaction,
 		core.repos.merchant,
 	)
@@ -330,7 +339,7 @@ func actionAPI(c *cli.Context) error {
 		core.logger,
 		core.redis,
 		core.gateway,
-		accounts,
+		account,
 		item,
 		transaction,
 		core.repos.webhook,
@@ -347,7 +356,7 @@ func actionAPI(c *cli.Context) error {
 		core.gateway,
 		user,
 		importer,
-		accounts,
+		account,
 		item,
 		transaction,
 	)
@@ -389,13 +398,19 @@ func actionWorker(c *cli.Context) error {
 
 	core := buildCore()
 
-	accounts := account.New(
+	user := user.New(
+		false,
+		core.repos.user,
+	)
+
+	account := account.New(
 		core.repos.account,
 	)
 
 	item := item.New(
-		core.repos.account,
+		account,
 		core.gateway,
+		user,
 		core.repos.item,
 		core.repos.plaid,
 	)
@@ -407,6 +422,7 @@ func actionWorker(c *cli.Context) error {
 		core.gateway,
 		cache,
 		cfg.S3.Bucket,
+		core.repos.starter,
 		core.repos.transaction,
 		core.repos.merchant,
 	)
@@ -416,7 +432,7 @@ func actionWorker(c *cli.Context) error {
 		core.logger,
 		core.redis,
 		core.gateway,
-		accounts,
+		account,
 		item,
 		transaction,
 		core.repos.webhook,

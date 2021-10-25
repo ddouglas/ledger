@@ -16,7 +16,7 @@ type userRepository struct {
 }
 
 var userColumns = []string{
-	"id", "name", "email", "auth0_subject", "created_at", "updated_at",
+	"id", "email", "auth0_subject", "created_at", "updated_at",
 }
 
 func NewUserRepository(db *sqlx.DB) ledger.UserRepository {
@@ -39,8 +39,10 @@ func (r *userRepository) User(ctx context.Context, id uuid.UUID) (*ledger.User, 
 
 	var user = new(ledger.User)
 	err = r.db.GetContext(ctx, user, stmt, args...)
-
-	return user, err
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 
 }
 
@@ -58,8 +60,11 @@ func (r *userRepository) UserByEmail(ctx context.Context, email string) (*ledger
 
 	var user = new(ledger.User)
 	err = r.db.GetContext(ctx, user, stmt, args...)
+	if err != nil {
+		return nil, err
+	}
 
-	return user, err
+	return user, nil
 
 }
 
@@ -68,7 +73,7 @@ func (r *userRepository) CreateUser(ctx context.Context, user *ledger.User) (*le
 	query := sq.Insert("users").Columns(
 		userColumns...,
 	).Values(
-		user.ID, user.Name, user.Email,
+		user.ID, user.Email,
 		user.Auth0Subject, time.Now(), time.Now(),
 	)
 
@@ -89,7 +94,6 @@ func (r *userRepository) CreateUser(ctx context.Context, user *ledger.User) (*le
 func (r *userRepository) UpdateUser(ctx context.Context, id uuid.UUID, user *ledger.User) (*ledger.User, error) {
 
 	query := sq.Update("users").
-		Set("name", user.Name).
 		Set("email", user.Email).
 		Set("auth0_subject", user.Auth0Subject).
 		Where(sq.Eq{"id": id})

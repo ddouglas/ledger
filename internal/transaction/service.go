@@ -5,8 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math/rand"
-	"sort"
 	"strings"
 	"time"
 
@@ -25,6 +23,7 @@ import (
 )
 
 type Service interface {
+	ConvertMerchantToAlias(ctx context.Context, parentMerchantID, childMerchantID string) (*ledger.Merchant, error)
 	ProcessTransactions(ctx context.Context, item *ledger.Item, newTrans []*ledger.Transaction) error
 	TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (*ledger.TransactionReceipt, error)
 	AddReceiptToTransaction(ctx context.Context, itemID, transactionID string, file graphql.Upload) error
@@ -39,6 +38,7 @@ type service struct {
 	s3      *s3.Client
 	gateway gateway.Service
 	bucket  string
+	starter ledger.Starter
 
 	ledger.TransactionRepository
 	ledger.MerchantRepository
@@ -54,6 +54,7 @@ func New(
 	gateway gateway.Service,
 	cache cache.Service,
 	bucket string,
+	starter ledger.Starter,
 	transaction ledger.TransactionRepository,
 	merchants ledger.MerchantRepository,
 ) Service {
@@ -62,6 +63,7 @@ func New(
 		cache:                 cache,
 		s3:                    s3,
 		bucket:                bucket,
+		starter:               starter,
 		TransactionRepository: transaction,
 		MerchantRepository:    merchants,
 		logger:                logger,
@@ -87,51 +89,7 @@ func (s *service) ProcessTransactions2(ctx context.Context, item *ledger.Item, n
 		if errors.Is(err, sql.ErrNoRows) {
 
 			entry.Info("new transaction detected, fetching records for date")
-			filters := &ledger.TransactionFilter{
-				OnDate: null.TimeFrom(plaidTransaction.Date),
-			}
-			transactions, err := s.TransactionsPaginated(ctx, item.ItemID, plaidTransaction.AccountID, filters)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				entry.WithError(err).Error()
-				return errors.New("failed to fetch transactions from DB")
-			}
-
-			entry = entry.WithField("count", len(transactions)).WithError(err)
 			plaidTransaction.ItemID = item.ItemID
-
-			if err != nil && errors.Is(err, sql.ErrNoRows) || len(transactions) == 0 {
-				entry.WithFields(logrus.Fields{
-					"dateTime":       plaidTransaction.Date,
-					"transaction_id": plaidTransaction.TransactionID,
-				}).Info("no records exist for date, set dateTime to date")
-				date := plaidTransaction.Date
-				if date.IsZero() {
-					now := time.Now()
-					date = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-				}
-				plaidTransaction.DateTime.SetValid(date)
-			}
-
-			if err == nil && len(transactions) > 0 {
-				entry.Info("found transactions, determining next timestamp")
-				sort.SliceStable(transactions, func(i, j int) bool {
-					return transactions[i].DateTime.Time.Unix() > transactions[j].DateTime.Time.Unix()
-				})
-
-				firstTransForDate := transactions[0]
-				var nextTransDatetime time.Time
-				if firstTransForDate.DateTime.Valid && !firstTransForDate.DateTime.Time.IsZero() {
-					nextTransDatetime = firstTransForDate.DateTime.Time.Add(time.Second)
-				} else {
-					now := time.Now()
-					nextTransDatetime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-				}
-				plaidTransaction.DateTime.SetValid(nextTransDatetime)
-				entry.WithFields(logrus.Fields{
-					"dateTime":       nextTransDatetime,
-					"transaction_id": plaidTransaction.TransactionID,
-				}).Info("setting transaction datetime")
-			}
 
 			_, err = s.CreateTransaction(ctx, plaidTransaction)
 			if err != nil {
@@ -219,6 +177,7 @@ func (s *service) ProcessTransactions(ctx context.Context, item *ledger.Item, ne
 }
 
 func (s *service) processTransaction(ctx context.Context, item *ledger.Item, plaidTransaction *ledger.Transaction) error {
+
 	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
 		"id":   plaidTransaction.TransactionID,
 		"date": plaidTransaction.Date.Format("2006-01-02"),
@@ -306,6 +265,7 @@ func (s *service) processTransaction(ctx context.Context, item *ledger.Item, pla
 
 	entry.Info("transaction updated successfully")
 	return nil
+
 }
 
 func (s *service) handleTransactionMerchant(ctx context.Context, transaction *ledger.Transaction) error {
@@ -350,18 +310,6 @@ func (s *service) handleTransactionMerchant(ctx context.Context, transaction *le
 	transaction.MerchantID = merchant.ID
 	return nil
 
-}
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-var src = rand.NewSource(time.Now().UnixNano())
-
-func randString(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[src.Int63()%int64(len(letterBytes))]
-	}
-	return string(b)
 }
 
 func (s *service) TransactionReceiptPresignedURL(ctx context.Context, itemID, transactionID string) (*ledger.TransactionReceipt, error) {
@@ -499,51 +447,3 @@ func validateContentType(contentType string) error {
 
 	return fmt.Errorf("%s is not an allowed file type, allowed types are: %s", contentType, strings.Join(allowedFileTypes, ", "))
 }
-
-// func sleep() {
-// 	time.Sleep(time.Millisecond * 250)
-// }
-
-// func mapTransactionsByTransactionID(trans []*ledger.Transaction) map[string]*ledger.Transaction {
-// 	mapTransactions := make(map[string]*ledger.Transaction)
-// 	for _, tran := range trans {
-// 		mapTransactions[tran.TransactionID] = tran
-// 	}
-// 	return mapTransactions
-// }
-
-// for i, tran := range newTrans {
-// 	fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, tran.Date.Format("2006-01-02"), tran.DateTime.Time.Format("2006-01-02 15:04:05"))
-// }
-// transactionMap := make(map[string][]*ledger.Transaction)
-// 	const dateFmt = "2006-01-02"
-// 	for _, transaction := range newTrans {
-
-// 		if _, ok := transactionMap[transaction.Date.Format(dateFmt)]; !ok {
-// 			transactionMap[transaction.Date.Format(dateFmt)] = make([]*ledger.Transaction, 0, 10)
-// 		}
-
-// 		transactionMap[transaction.Date.Format(dateFmt)] = append(transactionMap[transaction.Date.Format(dateFmt)], transaction)
-
-// 	}
-// 	modifiedTransactions := make([]*ledger.Transaction, 0, len(newTrans))
-// 	for _, transactions := range transactionMap {
-// 		numTransactions := len(transactions)
-// 		fmt.Println(numTransactions)
-// 		for i, transaction := range transactions {
-// 			if i == 0 {
-// 				transactions[i].DateTime.SetValid(transactions[i].Date)
-// 				continue
-// 			}
-
-// 			prevTransaction := transactions[i-1]
-// 			transactions[i].DateTime.SetValid(prevTransaction.DateTime.Time.Add(time.Second))
-// 			fmt.Printf("Index: %d Date: %s DateTime: %s\n", i, transaction.Date.Format("2006-01-02"), transaction.DateTime.Time.Format("2006-01-02 15:04:05"))
-// 			modifiedTransactions = append(modifiedTransactions, transaction)
-// 		}
-
-// 	}
-
-// 	sort.SliceStable(modifiedTransactions, func(i, j int) bool {
-// 		return modifiedTransactions[i].DateTime.Time.Unix() < modifiedTransactions[j].DateTime.Time.Unix()
-// 	})

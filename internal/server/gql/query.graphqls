@@ -3,11 +3,13 @@ type Query {
 
     items: [Item!]
 
-    linkToken: String!
+    linkToken(state: String): LinkState!
 
     merchants: [Merchant!]
+    merchant(merchantID: String!): Merchant!
 
     transactionsPaginated(itemID: String!, accountID: String!, filters: TransactionFilter): PaginatedTransactions!
     transactions(itemID: String!, accountID: String!, filters: TransactionFilter): [Transaction]!
-    transactionReceipt(itemID: String!, accountID: String!, transactionID: String!): TransactionReceipt
+    transaction(itemID: String!, transactionID: String!): Transaction!
+    transactionReceipt(itemID: String!, transactionID: String!): TransactionReceipt
 }

@@ -34,6 +34,10 @@ func (r *itemResolver) Accounts(ctx context.Context, obj *ledger.Item) ([]*ledge
 	return r.loaders.AccountsByItemIDLoader().Load(ctx, obj.ItemID)
 }
 
+func (r *linkStateResolver) State(ctx context.Context, obj *ledger.LinkState) (string, error) {
+	return obj.State.String(), nil
+}
+
 func (r *merchantResolver) Aliases(ctx context.Context, obj *ledger.Merchant) ([]*ledger.MerchantAlias, error) {
 	return r.loaders.MerchantAliasLoader().Load(ctx, obj.ID)
 }
@@ -57,6 +61,9 @@ func (r *transactionResolver) Merchant(ctx context.Context, obj *ledger.Transact
 // Item returns generated.ItemResolver implementation.
 func (r *Resolver) Item() generated.ItemResolver { return &itemResolver{r} }
 
+// LinkState returns generated.LinkStateResolver implementation.
+func (r *Resolver) LinkState() generated.LinkStateResolver { return &linkStateResolver{r} }
+
 // Merchant returns generated.MerchantResolver implementation.
 func (r *Resolver) Merchant() generated.MerchantResolver { return &merchantResolver{r} }
 
@@ -67,6 +74,7 @@ func (r *Resolver) PlaidCategory() generated.PlaidCategoryResolver { return &pla
 func (r *Resolver) Transaction() generated.TransactionResolver { return &transactionResolver{r} }
 
 type itemResolver struct{ *Resolver }
+type linkStateResolver struct{ *Resolver }
 type merchantResolver struct{ *Resolver }
 type plaidCategoryResolver struct{ *Resolver }
 type transactionResolver struct{ *Resolver }

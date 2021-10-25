@@ -18,7 +18,6 @@ type UserRepository interface {
 
 type User struct {
 	ID           uuid.UUID `db:"id" json:"id"`
-	Name         string    `db:"name" json:"name"`
 	Email        string    `db:"email" json:"email"`
 	Auth0Subject string    `db:"auth0_subject" json:"auth0Subject"`
 	CreatedAt    time.Time `db:"created_at" json:"-"`
@@ -26,10 +25,6 @@ type User struct {
 }
 
 func (u *User) Validate() error {
-
-	if u.Name == "" {
-		return fmt.Errorf("user name must not be empty")
-	}
 
 	if u.Email == "" {
 		return fmt.Errorf("user email must not be empty")

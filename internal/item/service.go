@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/ddouglas/ledger"
-	"github.com/ddouglas/ledger/internal"
 	"github.com/ddouglas/ledger/internal/account"
 	"github.com/ddouglas/ledger/internal/gateway"
+	"github.com/ddouglas/ledger/internal/user"
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
 )
@@ -23,6 +23,7 @@ type Service interface {
 type service struct {
 	gateway gateway.Service
 	account account.Service
+	user    user.Service
 
 	ledger.ItemRepository
 	ledger.PlaidRepository
@@ -31,14 +32,16 @@ type service struct {
 func New(
 	account account.Service,
 	gateway gateway.Service,
+	user user.Service,
 	item ledger.ItemRepository,
 	plaid ledger.PlaidRepository,
 ) Service {
 	s := &service{
+		account:         account,
+		gateway:         gateway,
+		user:            user,
 		ItemRepository:  item,
 		PlaidRepository: plaid,
-		gateway:         gateway,
-		account:         account,
 	}
 
 	return s
@@ -63,7 +66,17 @@ func (s *service) ItemAccountsByUserID(ctx context.Context, userID uuid.UUID, it
 
 func (s *service) RegisterItem(ctx context.Context, request *ledger.RegisterItemRequest) (*ledger.Item, error) {
 
-	user := internal.UserFromContext(ctx)
+	state, err := s.gateway.LinkTokenByState(ctx, request.State)
+	if err != nil {
+		return nil, err
+	}
+
+	defer s.gateway.ClearLinkTokenState(ctx, request.State)
+
+	user, err := s.user.User(ctx, state.UserID)
+	if err != nil {
+		return nil, err
+	}
 
 	accounts, err := s.account.AccountsByUserID(ctx, user.ID)
 	if err != nil {

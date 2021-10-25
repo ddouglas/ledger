@@ -10,12 +10,17 @@ type MerchantRepository interface {
 	MerchantByAlias(ctx context.Context, alias string) (*Merchant, error)
 	Merchants(ctx context.Context) ([]*Merchant, error)
 	CreateMerchant(ctx context.Context, merchant *Merchant) (*Merchant, error)
+	CreateMerchantTx(ctx context.Context, tx Transactioner, merchant *Merchant) (*Merchant, error)
 	UpdateMerchant(ctx context.Context, id string, merchant *Merchant) (*Merchant, error)
+	UpdateMerchantTx(ctx context.Context, tx Transactioner, id string, merchant *Merchant) (*Merchant, error)
 	DeleteMerchant(ctx context.Context, id string) error
+	DeleteMerchantTx(ctx context.Context, tx Transactioner, id string) error
 
 	MerchantAliasesByMerchantID(ctx context.Context, merchantID string) ([]*MerchantAlias, error)
 	CreateMerchantAlias(ctx context.Context, alias *MerchantAlias) (*MerchantAlias, error)
+	CreateMerchantAliasTx(ctx context.Context, tx Transactioner, alias *MerchantAlias) (*MerchantAlias, error)
 	UpdateMerchantAlias(ctx context.Context, aliasID string, alias *MerchantAlias) (*MerchantAlias, error)
+	UpdateMerchantAliasTx(ctx context.Context, tx Transactioner, aliasID string, alias *MerchantAlias) (*MerchantAlias, error)
 }
 
 type Merchant struct {

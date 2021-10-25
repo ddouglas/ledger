@@ -48,6 +48,11 @@ type ItemStatus @goModel(model: "github.com/ddouglas/ledger.ItemStatus") {
     lastWebhook: WebhookStatus
 }
 
+type LinkState @goModel(model: "github.com/ddouglas/ledger.LinkState") {
+    state: String!
+    token: String!
+}
+
 type Merchant @goModel(model: "github.com/ddouglas/ledger.Merchant") {
     id: String!
     name: String!

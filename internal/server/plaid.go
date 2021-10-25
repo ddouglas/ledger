@@ -6,8 +6,6 @@ import (
 	"net/http"
 
 	"github.com/ddouglas/ledger"
-	"github.com/ddouglas/ledger/internal"
-	"github.com/go-chi/chi/v5"
 )
 
 func (s *server) handlePlaidPostV1Webhook(w http.ResponseWriter, r *http.Request) {
@@ -35,80 +33,24 @@ func (s *server) handlePlaidPostV1Webhook(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *server) handlePlaidGetV1Categories(w http.ResponseWriter, r *http.Request) {
+func (s *server) handlePlaidPostLinkToken(w http.ResponseWriter, r *http.Request) {
 
 	var ctx = r.Context()
 
-	categories, err := s.gateway.PlaidCategories(ctx)
+	var body = new(ledger.RegisterItemRequest)
+	defer closeRequestBody(ctx, r)
+	err := json.NewDecoder(r.Body).Decode(body)
 	if err != nil {
-		GetLogEntry(r).WithError(err).Error()
-		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch category"))
+		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to decode request body: %w", err))
 		return
 	}
 
-	s.writeResponse(ctx, w, http.StatusOK, categories)
-
-}
-
-func (s *server) handlePlaidGetV1Category(w http.ResponseWriter, r *http.Request) {
-
-	var ctx = r.Context()
-
-	categoryID := chi.URLParam(r, "categoryID")
-	if categoryID == "" {
-		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("categoryID is required"))
-		return
-	}
-
-	category, err := s.gateway.PlaidCategory(ctx, categoryID)
+	item, err := s.item.RegisterItem(ctx, body)
 	if err != nil {
-		GetLogEntry(r).WithError(err).Error()
-		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch category"))
+		s.writeError(ctx, w, http.StatusBadRequest, err)
 		return
 	}
 
-	s.writeResponse(ctx, w, http.StatusOK, category)
-
-}
-
-func (s *server) handlePlaidGetV1Institution(w http.ResponseWriter, r *http.Request) {
-
-	var ctx = r.Context()
-
-	institutionID := chi.URLParam(r, "institutionID")
-	if institutionID == "" {
-		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("institutionID is required"))
-		return
-	}
-
-	institution, err := s.gateway.PlaidInstitution(ctx, institutionID)
-	if err != nil {
-		GetLogEntry(r).WithError(err).Error()
-		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch institution"))
-		return
-	}
-
-	s.writeResponse(ctx, w, http.StatusOK, institution)
-
-}
-
-func (s *server) handlePlaidGetLinkToken(w http.ResponseWriter, r *http.Request) {
-
-	var ctx = r.Context()
-
-	user := internal.UserFromContext(ctx)
-
-	token, err := s.gateway.LinkToken(ctx, user)
-	if err != nil {
-		GetLogEntry(r).WithError(err).Error()
-		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch link token from plaid: %w", err))
-		return
-	}
-
-	s.writeResponse(ctx, w, http.StatusOK, struct {
-		Token string `json:"token"`
-	}{
-		Token: token,
-	})
+	s.writeResponse(ctx, w, http.StatusOK, item)
 
 }

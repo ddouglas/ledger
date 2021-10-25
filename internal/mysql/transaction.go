@@ -233,3 +233,25 @@ func (r *transactionRepository) UpdateTransaction(ctx context.Context, transacti
 
 	return r.Transaction(ctx, transaction.ItemID, transaction.TransactionID)
 }
+
+func (r *transactionRepository) UpdateTransactionMerchantTx(ctx context.Context, tx ledger.Transactioner, byMerchantID, toMerchantID string) error {
+
+	txn, ok := tx.(*transaction)
+	if !ok {
+		return ErrInvalidTransaction
+	}
+
+	query, args, err := sq.Update(transactionsTableName).SetMap(map[string]interface{}{
+		"merchant_id": toMerchantID,
+	}).Where(sq.Eq{
+		"merchant_id": byMerchantID,
+	}).ToSql()
+	if err != nil {
+		return errors.Wrap(err, "[mysql.UpdateTransactionMerchant]")
+	}
+
+	_, err = txn.ExecContext(ctx, query, args...)
+
+	return errors.Wrap(err, "[mysql.UpdateTransactionMerchant]")
+
+}

@@ -20,6 +20,7 @@ type TransactionRepository interface {
 	TransactionsPaginated(ctx context.Context, itemID, accountID string, filters *TransactionFilter) ([]*Transaction, error)
 	CreateTransaction(ctx context.Context, transaction *Transaction) (*Transaction, error)
 	UpdateTransaction(ctx context.Context, transactionID string, transaction *Transaction) (*Transaction, error)
+	UpdateTransactionMerchantTx(ctx context.Context, txn Transactioner, byMerchantID, toMerchantID string) error
 }
 
 type PaginatedTransactions struct {

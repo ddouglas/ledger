@@ -73,6 +73,7 @@ type RegisterItemRequest struct {
 	} `json:"institution"`
 	Accounts    []*RegisterItemRequestAccount `json:"accounts"`
 	PublicToken string                        `json:"public_token"`
+	State       uuid.UUID                     `json:"state"`
 }
 
 type RegisterItemRequestAccount struct {

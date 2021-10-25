@@ -18,12 +18,24 @@ type Service interface {
 	ledger.UserRepository
 }
 
-func New(user ledger.UserRepository) Service {
+type service struct {
+	registrationEnabled bool
+	ledger.UserRepository
+}
+
+func New(registrationEnabled bool, user ledger.UserRepository) Service {
 	return &service{
-		UserRepository: user,
+		registrationEnabled: registrationEnabled,
+		UserRepository:      user,
 	}
 
 }
+
+// func (s *service) ProcessLinkToken(ctx context.Context, token *ledger.LinkToken) error {
+
+// 	return nil
+
+// }
 
 func (s *service) UserFromToken(ctx context.Context, token jwt.Token) (*ledger.User, error) {
 
@@ -45,7 +57,7 @@ func (s *service) UserFromToken(ctx context.Context, token jwt.Token) (*ledger.U
 		}
 
 		user, err = s.User(ctx, uuidID)
-		if err != nil {
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.Wrap(err, "failed to fetch user by userID")
 		}
 
@@ -59,13 +71,25 @@ func (s *service) UserFromToken(ctx context.Context, token jwt.Token) (*ledger.U
 		}
 
 		user, err = s.UserByEmail(ctx, email)
-		if err != nil {
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.Wrap(err, "failed to fetch user by email")
 		}
 	}
 
 	if user == nil {
-		return nil, fmt.Errorf("failed to parse userID nor email claim to valid users")
+		if !s.registrationEnabled {
+			return nil, fmt.Errorf("failed to parse userID nor email claim to valid users")
+		}
+		if emailClaimOk {
+
+			user, err = s.FetchOrCreateUser(ctx, &ledger.User{
+				Email:        emailClaim.(string),
+				Auth0Subject: token.Subject(),
+			})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create user ")
+			}
+		}
 	}
 
 	return user, nil

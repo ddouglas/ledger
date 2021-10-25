@@ -42,6 +42,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Item() ItemResolver
+	LinkState() LinkStateResolver
 	Merchant() MerchantResolver
 	Mutation() MutationResolver
 	PlaidCategory() PlaidCategoryResolver
@@ -95,6 +96,11 @@ type ComplexityRoot struct {
 		Transactions func(childComplexity int) int
 	}
 
+	LinkState struct {
+		State func(childComplexity int) int
+		Token func(childComplexity int) int
+	}
+
 	Merchant struct {
 		Aliases func(childComplexity int) int
 		ID      func(childComplexity int) int
@@ -108,8 +114,11 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		DeleteReceipt     func(childComplexity int, itemID string, transactionID string) int
-		UpdateTransaction func(childComplexity int, itemID string, transactionID string, input *ledger.UpdateTransactionInput) int
+		ConvertMerchantToAlias func(childComplexity int, parent string, child string) int
+		CreateMerchant         func(childComplexity int, name string) int
+		DeleteReceipt          func(childComplexity int, itemID string, transactionID string) int
+		UpdateMerchant         func(childComplexity int, merchantID string, name string) int
+		UpdateTransaction      func(childComplexity int, itemID string, transactionID string, input *ledger.UpdateTransactionInput) int
 	}
 
 	PaginatedTransactions struct {
@@ -137,9 +146,11 @@ type ComplexityRoot struct {
 	Query struct {
 		Categories            func(childComplexity int) int
 		Items                 func(childComplexity int) int
-		LinkToken             func(childComplexity int) int
+		LinkToken             func(childComplexity int, state *string) int
+		Merchant              func(childComplexity int, merchantID string) int
 		Merchants             func(childComplexity int) int
-		TransactionReceipt    func(childComplexity int, itemID string, accountID string, transactionID string) int
+		Transaction           func(childComplexity int, itemID string, transactionID string) int
+		TransactionReceipt    func(childComplexity int, itemID string, transactionID string) int
 		Transactions          func(childComplexity int, itemID string, accountID string, filters *model.TransactionFilter) int
 		TransactionsPaginated func(childComplexity int, itemID string, accountID string, filters *model.TransactionFilter) int
 	}
@@ -190,10 +201,16 @@ type ItemResolver interface {
 	Institution(ctx context.Context, obj *ledger.Item) (*ledger.PlaidInstitution, error)
 	Accounts(ctx context.Context, obj *ledger.Item) ([]*ledger.Account, error)
 }
+type LinkStateResolver interface {
+	State(ctx context.Context, obj *ledger.LinkState) (string, error)
+}
 type MerchantResolver interface {
 	Aliases(ctx context.Context, obj *ledger.Merchant) ([]*ledger.MerchantAlias, error)
 }
 type MutationResolver interface {
+	ConvertMerchantToAlias(ctx context.Context, parent string, child string) (*ledger.Merchant, error)
+	CreateMerchant(ctx context.Context, name string) (*ledger.Merchant, error)
+	UpdateMerchant(ctx context.Context, merchantID string, name string) (bool, error)
 	DeleteReceipt(ctx context.Context, itemID string, transactionID string) (bool, error)
 	UpdateTransaction(ctx context.Context, itemID string, transactionID string, input *ledger.UpdateTransactionInput) (*ledger.Transaction, error)
 }
@@ -203,11 +220,13 @@ type PlaidCategoryResolver interface {
 type QueryResolver interface {
 	Categories(ctx context.Context) ([]*ledger.PlaidCategory, error)
 	Items(ctx context.Context) ([]*ledger.Item, error)
-	LinkToken(ctx context.Context) (string, error)
+	LinkToken(ctx context.Context, state *string) (*ledger.LinkState, error)
 	Merchants(ctx context.Context) ([]*ledger.Merchant, error)
+	Merchant(ctx context.Context, merchantID string) (*ledger.Merchant, error)
 	TransactionsPaginated(ctx context.Context, itemID string, accountID string, filters *model.TransactionFilter) (*ledger.PaginatedTransactions, error)
 	Transactions(ctx context.Context, itemID string, accountID string, filters *model.TransactionFilter) ([]*ledger.Transaction, error)
-	TransactionReceipt(ctx context.Context, itemID string, accountID string, transactionID string) (*ledger.TransactionReceipt, error)
+	Transaction(ctx context.Context, itemID string, transactionID string) (*ledger.Transaction, error)
+	TransactionReceipt(ctx context.Context, itemID string, transactionID string) (*ledger.TransactionReceipt, error)
 }
 type TransactionResolver interface {
 	Category(ctx context.Context, obj *ledger.Transaction) (*ledger.PlaidCategory, error)
@@ -439,6 +458,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ItemStatus.Transactions(childComplexity), true
 
+	case "LinkState.state":
+		if e.complexity.LinkState.State == nil {
+			break
+		}
+
+		return e.complexity.LinkState.State(childComplexity), true
+
+	case "LinkState.token":
+		if e.complexity.LinkState.Token == nil {
+			break
+		}
+
+		return e.complexity.LinkState.Token(childComplexity), true
+
 	case "Merchant.aliases":
 		if e.complexity.Merchant.Aliases == nil {
 			break
@@ -481,6 +514,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.MerchantAlias.MerchantID(childComplexity), true
 
+	case "Mutation.convertMerchantToAlias":
+		if e.complexity.Mutation.ConvertMerchantToAlias == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_convertMerchantToAlias_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ConvertMerchantToAlias(childComplexity, args["parent"].(string), args["child"].(string)), true
+
+	case "Mutation.createMerchant":
+		if e.complexity.Mutation.CreateMerchant == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createMerchant_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateMerchant(childComplexity, args["name"].(string)), true
+
 	case "Mutation.deleteReceipt":
 		if e.complexity.Mutation.DeleteReceipt == nil {
 			break
@@ -492,6 +549,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DeleteReceipt(childComplexity, args["itemID"].(string), args["transactionID"].(string)), true
+
+	case "Mutation.updateMerchant":
+		if e.complexity.Mutation.UpdateMerchant == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMerchant_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateMerchant(childComplexity, args["merchantID"].(string), args["name"].(string)), true
 
 	case "Mutation.updateTransaction":
 		if e.complexity.Mutation.UpdateTransaction == nil {
@@ -594,7 +663,24 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.LinkToken(childComplexity), true
+		args, err := ec.field_Query_linkToken_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.LinkToken(childComplexity, args["state"].(*string)), true
+
+	case "Query.merchant":
+		if e.complexity.Query.Merchant == nil {
+			break
+		}
+
+		args, err := ec.field_Query_merchant_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Merchant(childComplexity, args["merchantID"].(string)), true
 
 	case "Query.merchants":
 		if e.complexity.Query.Merchants == nil {
@@ -602,6 +688,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Merchants(childComplexity), true
+
+	case "Query.transaction":
+		if e.complexity.Query.Transaction == nil {
+			break
+		}
+
+		args, err := ec.field_Query_transaction_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Transaction(childComplexity, args["itemID"].(string), args["transactionID"].(string)), true
 
 	case "Query.transactionReceipt":
 		if e.complexity.Query.TransactionReceipt == nil {
@@ -613,7 +711,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.TransactionReceipt(childComplexity, args["itemID"].(string), args["accountID"].(string), args["transactionID"].(string)), true
+		return e.complexity.Query.TransactionReceipt(childComplexity, args["itemID"].(string), args["transactionID"].(string)), true
 
 	case "Query.transactions":
 		if e.complexity.Query.Transactions == nil {
@@ -893,6 +991,9 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	{Name: "internal/server/gql/mutation.graphqls", Input: `type Mutation {
+    convertMerchantToAlias(parent: String!, child: String!): Merchant!
+    createMerchant(name: String!): Merchant!
+    updateMerchant(merchantID: String!, name: String!): Boolean!
     deleteReceipt(itemID: String!, transactionID: String!): Boolean!
     updateTransaction(itemID: String!, transactionID: String!, input: UpdateTransactionInput): Transaction!
 }
@@ -902,13 +1003,15 @@ var sources = []*ast.Source{
 
     items: [Item!]
 
-    linkToken: String!
+    linkToken(state: String): LinkState!
 
     merchants: [Merchant!]
+    merchant(merchantID: String!): Merchant!
 
     transactionsPaginated(itemID: String!, accountID: String!, filters: TransactionFilter): PaginatedTransactions!
     transactions(itemID: String!, accountID: String!, filters: TransactionFilter): [Transaction]!
-    transactionReceipt(itemID: String!, accountID: String!, transactionID: String!): TransactionReceipt
+    transaction(itemID: String!, transactionID: String!): Transaction!
+    transactionReceipt(itemID: String!, transactionID: String!): TransactionReceipt
 }
 `, BuiltIn: false},
 	{Name: "internal/server/gql/type.graphqls", Input: `directive @goModel(model: String) on OBJECT | INPUT_OBJECT
@@ -959,6 +1062,11 @@ type Item @goModel(model: "github.com/ddouglas/ledger.Item") {
 type ItemStatus @goModel(model: "github.com/ddouglas/ledger.ItemStatus") {
     transactions: ProductStatus
     lastWebhook: WebhookStatus
+}
+
+type LinkState @goModel(model: "github.com/ddouglas/ledger.LinkState") {
+    state: String!
+    token: String!
 }
 
 type Merchant @goModel(model: "github.com/ddouglas/ledger.Merchant") {
@@ -1063,6 +1171,45 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) field_Mutation_convertMerchantToAlias_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["parent"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parent"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["parent"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["child"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("child"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["child"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createMerchant_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["name"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["name"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteReceipt_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1084,6 +1231,30 @@ func (ec *executionContext) field_Mutation_deleteReceipt_args(ctx context.Contex
 		}
 	}
 	args["transactionID"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMerchant_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["merchantID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("merchantID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["merchantID"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["name"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["name"] = arg1
 	return args, nil
 }
 
@@ -1135,6 +1306,36 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_linkToken_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["state"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("state"))
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["state"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_merchant_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["merchantID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("merchantID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["merchantID"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_transactionReceipt_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1148,23 +1349,38 @@ func (ec *executionContext) field_Query_transactionReceipt_args(ctx context.Cont
 	}
 	args["itemID"] = arg0
 	var arg1 string
-	if tmp, ok := rawArgs["accountID"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountID"))
+	if tmp, ok := rawArgs["transactionID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transactionID"))
 		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["accountID"] = arg1
-	var arg2 string
-	if tmp, ok := rawArgs["transactionID"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transactionID"))
-		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+	args["transactionID"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_transaction_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["itemID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("itemID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["transactionID"] = arg2
+	args["itemID"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["transactionID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transactionID"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["transactionID"] = arg1
 	return args, nil
 }
 
@@ -2265,6 +2481,76 @@ func (ec *executionContext) _ItemStatus_lastWebhook(ctx context.Context, field g
 	return ec.marshalOWebhookStatus2githubᚗcomᚋplaidᚋplaidᚑgoᚋplaidᚐWebhookStatus(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _LinkState_state(ctx context.Context, field graphql.CollectedField, obj *ledger.LinkState) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "LinkState",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.LinkState().State(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _LinkState_token(ctx context.Context, field graphql.CollectedField, obj *ledger.LinkState) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "LinkState",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Token, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Merchant_id(ctx context.Context, field graphql.CollectedField, obj *ledger.Merchant) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2470,6 +2756,132 @@ func (ec *executionContext) _MerchantAlias_alias(ctx context.Context, field grap
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_convertMerchantToAlias(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_convertMerchantToAlias_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ConvertMerchantToAlias(rctx, args["parent"].(string), args["child"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ledger.Merchant)
+	fc.Result = res
+	return ec.marshalNMerchant2ᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchant(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_createMerchant(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_createMerchant_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateMerchant(rctx, args["name"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ledger.Merchant)
+	fc.Result = res
+	return ec.marshalNMerchant2ᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchant(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_updateMerchant(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_updateMerchant_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateMerchant(rctx, args["merchantID"].(string), args["name"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_deleteReceipt(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2971,9 +3383,16 @@ func (ec *executionContext) _Query_linkToken(ctx context.Context, field graphql.
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_linkToken_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().LinkToken(rctx)
+		return ec.resolvers.Query().LinkToken(rctx, args["state"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2985,9 +3404,9 @@ func (ec *executionContext) _Query_linkToken(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*ledger.LinkState)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNLinkState2ᚖgithubᚗcomᚋddouglasᚋledgerᚐLinkState(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_merchants(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3020,6 +3439,48 @@ func (ec *executionContext) _Query_merchants(ctx context.Context, field graphql.
 	res := resTmp.([]*ledger.Merchant)
 	fc.Result = res
 	return ec.marshalOMerchant2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchantᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_merchant(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_merchant_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Merchant(rctx, args["merchantID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ledger.Merchant)
+	fc.Result = res
+	return ec.marshalNMerchant2ᚖgithubᚗcomᚋddouglasᚋledgerᚐMerchant(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_transactionsPaginated(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3106,6 +3567,48 @@ func (ec *executionContext) _Query_transactions(ctx context.Context, field graph
 	return ec.marshalNTransaction2ᚕᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Query_transaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_transaction_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Transaction(rctx, args["itemID"].(string), args["transactionID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ledger.Transaction)
+	fc.Result = res
+	return ec.marshalNTransaction2ᚖgithubᚗcomᚋddouglasᚋledgerᚐTransaction(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_transactionReceipt(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -3131,7 +3634,7 @@ func (ec *executionContext) _Query_transactionReceipt(ctx context.Context, field
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TransactionReceipt(rctx, args["itemID"].(string), args["accountID"].(string), args["transactionID"].(string))
+		return ec.resolvers.Query().TransactionReceipt(rctx, args["itemID"].(string), args["transactionID"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5595,6 +6098,47 @@ func (ec *executionContext) _ItemStatus(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var linkStateImplementors = []string{"LinkState"}
+
+func (ec *executionContext) _LinkState(ctx context.Context, sel ast.SelectionSet, obj *ledger.LinkState) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, linkStateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LinkState")
+		case "state":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._LinkState_state(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "token":
+			out.Values[i] = ec._LinkState_token(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var merchantImplementors = []string{"Merchant"}
 
 func (ec *executionContext) _Merchant(ctx context.Context, sel ast.SelectionSet, obj *ledger.Merchant) graphql.Marshaler {
@@ -5690,6 +6234,21 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
+		case "convertMerchantToAlias":
+			out.Values[i] = ec._Mutation_convertMerchantToAlias(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createMerchant":
+			out.Values[i] = ec._Mutation_createMerchant(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updateMerchant":
+			out.Values[i] = ec._Mutation_updateMerchant(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "deleteReceipt":
 			out.Values[i] = ec._Mutation_deleteReceipt(ctx, field)
 			if out.Values[i] == graphql.Null {
@@ -5905,6 +6464,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_merchants(ctx, field)
 				return res
 			})
+		case "merchant":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_merchant(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "transactionsPaginated":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -5928,6 +6501,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_transactions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "transaction":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_transaction(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -6438,6 +7025,20 @@ func (ec *executionContext) marshalNItem2ᚖgithubᚗcomᚋddouglasᚋledgerᚐI
 		return graphql.Null
 	}
 	return ec._Item(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNLinkState2githubᚗcomᚋddouglasᚋledgerᚐLinkState(ctx context.Context, sel ast.SelectionSet, v ledger.LinkState) graphql.Marshaler {
+	return ec._LinkState(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLinkState2ᚖgithubᚗcomᚋddouglasᚋledgerᚐLinkState(ctx context.Context, sel ast.SelectionSet, v *ledger.LinkState) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._LinkState(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNMerchant2githubᚗcomᚋddouglasᚋledgerᚐMerchant(ctx context.Context, sel ast.SelectionSet, v ledger.Merchant) graphql.Marshaler {

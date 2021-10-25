@@ -155,8 +155,6 @@ func runMigrations(core *core) {
 		}
 
 		entry.Info("migration executed successfully")
-		time.Sleep(time.Second)
-
 	}
 
 }

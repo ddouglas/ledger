@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ddouglas/ledger"
+	"github.com/ddouglas/ledger/internal/cache"
 	"github.com/ddouglas/ledger/pkg/mem"
+	"github.com/gofrs/uuid"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/pkg/errors"
 	"github.com/plaid/plaid-go/plaid"
@@ -18,7 +21,9 @@ type Service interface {
 	Accounts(ctx context.Context, accessToken string) ([]*ledger.Account, error)
 	ExchangePublicToken(ctx context.Context, publicToken string) (itemID, accessToken string, err error)
 	Item(ctx context.Context, accessToken string) (*ledger.Item, error)
-	LinkToken(ctx context.Context, user *ledger.User) (string, error)
+	LinkToken(ctx context.Context, user *ledger.User) (*ledger.LinkState, error)
+	LinkTokenByState(ctx context.Context, state uuid.UUID) (*ledger.LinkState, error)
+	ClearLinkTokenState(ctx context.Context, state uuid.UUID)
 	Transactions(ctx context.Context, accessToken string, startDate, endDate time.Time, accountIDs []string) ([]*ledger.Transaction, error)
 	WebhookVerificationKey(ctx context.Context, keyID string) (*plaid.WebhookVerificationKey, error)
 
@@ -30,13 +35,57 @@ type Service interface {
 	ledger.PlaidRepository
 }
 
-func New(optFuncs ...configOption) Service {
+type service struct {
+	logger   *logrus.Logger
+	newrelic *newrelic.Application
 
-	s := &service{}
-	for _, optFunc := range optFuncs {
-		optFunc(s)
+	client *plaid.Client
+
+	cache cache.Service
+
+	products     []string
+	language     string
+	webhook      string
+	countryCodes []string
+
+	ledger.PlaidRepository
+
+	mux   *sync.Mutex
+	state map[uuid.UUID]*ledger.LinkState
+}
+
+const (
+	PubSubPlaidWebhook = "plaid-webhook"
+)
+
+func New(
+	logger *logrus.Logger,
+	newrelic *newrelic.Application,
+
+	client *plaid.Client,
+
+	cache cache.Service,
+
+	products []string,
+	language string,
+	webhook string,
+	countryCodes []string,
+
+	plaid ledger.PlaidRepository,
+) Service {
+	return &service{
+		logger:          logger,
+		newrelic:        newrelic,
+		client:          client,
+		cache:           cache,
+		products:        products,
+		language:        language,
+		webhook:         webhook,
+		countryCodes:    countryCodes,
+		PlaidRepository: plaid,
+		mux:             new(sync.Mutex),
+		state:           make(map[uuid.UUID]*ledger.LinkState),
 	}
-	return s
 }
 
 func (s *service) PlaidCategory(ctx context.Context, id string) (*ledger.PlaidCategory, error) {
@@ -179,7 +228,6 @@ func (s *service) ImportInstitutions(ctx context.Context) {
 
 		plaidInstitutions = append(plaidInstitutions, innerResponse.Institutions...)
 		entry.WithField("plaidInstitutionsLength", len(plaidInstitutions))
-		mem.PrintMemUsage()
 	}
 
 	for _, plaidInstitution := range plaidInstitutions {

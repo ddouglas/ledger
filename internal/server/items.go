@@ -1,13 +1,11 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/pkg/errors"
 
-	"github.com/ddouglas/ledger"
 	"github.com/ddouglas/ledger/internal"
 	"github.com/go-chi/chi/v5"
 )
@@ -103,28 +101,6 @@ func (s *server) handleGetItemAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.writeResponse(ctx, w, http.StatusOK, account)
-
-}
-
-func (s *server) handlePostUserItems(w http.ResponseWriter, r *http.Request) {
-
-	var ctx = r.Context()
-
-	var body = new(ledger.RegisterItemRequest)
-	defer closeRequestBody(ctx, r)
-	err := json.NewDecoder(r.Body).Decode(body)
-	if err != nil {
-		s.writeError(ctx, w, http.StatusBadRequest, fmt.Errorf("failed to fetch items by user: %w", err))
-		return
-	}
-
-	item, err := s.item.RegisterItem(ctx, body)
-	if err != nil {
-		s.writeError(ctx, w, http.StatusBadRequest, err)
-		return
-	}
-
-	s.writeResponse(ctx, w, http.StatusOK, item)
 
 }
 

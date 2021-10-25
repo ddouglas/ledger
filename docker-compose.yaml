@@ -1,101 +1,27 @@
 version: "3.7"
 
 services:
-    # api:
-    #     image: ledger:latest
-    #     restart: unless-stopped
-    #     command: ./wait-for-it -w mysql:3306 -w redis:6379 -t 0 -s -- ./ledger server
-    #     environment:
-    #         - MYSQL_HOST
-    #         - MYSQL_PORT
-    #         - MYSQL_USER
-    #         - MYSQL_PASS
-    #         - MYSQL_DB
-    #         - MYSQL_MIGRATE
-    #         - REDIS_HOST
-    #         - REDIS_PORT
-    #         - NEW_RELIC_ENABLED
-    #         - NEW_RELIC_APP_NAME
-    #         - NEW_RELIC_LICENSE_KEY
-    #         - NEW_RELIC_DISTRIBUTED_TRACING_ENABLED
-    #         - LOG_LEVEL
-    #         - API_PORT
-    #         - AUTH0_CLIENTID
-    #         - AUTH0_CLIENTSECRET
-    #         - AUTH0_AUDIENCE
-    #         - AUTH0_ISSUER
-    #         - AUTH0_JWKSURI
-    #         - AUTH0_TENANT
-    #         - AUTH0_REDIRECTURI
-    #         - AUTH0_SERVERTOKEN
-    #         - PLAID_ENVIRONMENT
-    #         - PLAID_CLIENT_ID
-    #         - PLAID_CLIENT_SECRET
-    #         - PLAID_WEBHOOK
-    #         - SPACES_CLIENT_ID
-    #         - SPACES_CLIENT_SECRET
-    #         - SPACES_ENDPOINT
-    #         - SPACES_BUCKET
-    #     ports:
-    #         - "55011:55011"
-    #     networks:
-    #         - ledger-network
-    # worker:
-    #     image: ledger:latest
-    #     command: ./wait-for-it -w mysql:3306 -w redis:6379 -t 0 -s -- ./ledger worker
-    #     restart: unless-stopped
-    #     environment:
-    #         - MYSQL_HOST
-    #         - MYSQL_PORT
-    #         - MYSQL_USER
-    #         - MYSQL_PASS
-    #         - MYSQL_DB
-    #         - MYSQL_MIGRATE
-    #         - REDIS_HOST
-    #         - REDIS_PORT
-    #         - NEW_RELIC_ENABLED
-    #         - NEW_RELIC_APP_NAME
-    #         - NEW_RELIC_LICENSE_KEY
-    #         - NEW_RELIC_DISTRIBUTED_TRACING_ENABLED
-    #         - LOG_LEVEL
-    #         - API_PORT
-    #         - AUTH0_CLIENTID
-    #         - AUTH0_CLIENTSECRET
-    #         - AUTH0_AUDIENCE
-    #         - AUTH0_ISSUER
-    #         - AUTH0_JWKSURI
-    #         - AUTH0_TENANT
-    #         - AUTH0_REDIRECTURI
-    #         - AUTH0_SERVERTOKEN
-    #         - PLAID_ENVIRONMENT
-    #         - PLAID_CLIENT_ID
-    #         - PLAID_CLIENT_SECRET
-    #         - PLAID_WEBHOOK
-    #         - SPACES_CLIENT_ID
-    #         - SPACES_CLIENT_SECRET
-    #         - SPACES_ENDPOINT
-    #         - SPACES_BUCKET
-    #     networks:
-    #         - ledger-network
+    api:
+        image: ledger:latest
+        restart: unless-stopped
+        command: ./ledger server
+        env_file: .config/.env
+        ports:
+            - "55200:55200"
+    worker:
+        image: ledger:latest
+        command: ./ledger worker
+        restart: unless-stopped
+        env_file: .config/.env
     redis:
         image: redis:6.2.5
         restart: unless-stopped
         container_name: ledger-redis
+        env_file: .config/redis/.env
+        command: >
+            redis-server /etc/redis.conf
         volumes:
             - ./.data/redis:/data
-        networks:
-            - ledger-network
-    mysql:
-        image: mysql:5.7.33
-        env_file: .config/mysql/.env
-        container_name: ledger-mysql
-        restart: unless-stopped
-        ports:
-            - "3307:3306"
-        volumes:
-            - ./.data/mysql:/var/lib/mysql
-            - ./.config/mysql/ledger.conf:/etc/mysql/ledger.conf
-        networks:
-            - ledger-network
+            - ./.config/redis/redis.conf:/etc/redis.conf
 networks:
     ledger-network:

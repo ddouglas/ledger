@@ -2,16 +2,50 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/ddouglas/ledger"
+	"github.com/gofrs/uuid"
 	"github.com/plaid/plaid-go/plaid"
 	"github.com/sirupsen/logrus"
 	"github.com/volatiletech/null"
 )
 
-func (s *service) LinkToken(ctx context.Context, user *ledger.User) (string, error) {
+func (s *service) ClearLinkTokenState(ctx context.Context, state uuid.UUID) {
+
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	_, ok := s.state[state]
+	if !ok {
+		return
+	}
+
+	delete(s.state, state)
+
+}
+
+func (s *service) LinkTokenByState(ctx context.Context, state uuid.UUID) (*ledger.LinkState, error) {
+
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	linkState, ok := s.state[state]
+	if !ok {
+		return nil, errors.New("token with provided state does not exist")
+	}
+
+	if linkState.Expiration.Unix() < time.Now().Unix() {
+		delete(s.state, state)
+		return nil, errors.New("token state has expired")
+	}
+
+	return linkState, nil
+
+}
+
+func (s *service) LinkToken(ctx context.Context, user *ledger.User) (*ledger.LinkState, error) {
 
 	entry := s.logger.WithContext(ctx).WithFields(logrus.Fields{
 		"service": "gateway",
@@ -20,34 +54,36 @@ func (s *service) LinkToken(ctx context.Context, user *ledger.User) (string, err
 	})
 	entry.Info("fetch link token")
 
-	linkConfig := plaid.LinkTokenConfigs{}
-	if len(s.products) > 0 {
-		linkConfig.Products = s.products
-	}
-	if len(s.countryCodes) > 0 {
-		linkConfig.CountryCodes = s.countryCodes
-	}
-	if s.language != nil {
-		linkConfig.Language = *s.language
-	}
-	if s.webhook != nil {
-		linkConfig.Webhook = *s.webhook
-	}
-
-	linkConfig.ClientName = user.Name
-
-	linkConfig.User = &plaid.LinkTokenUser{
-		ClientUserID: user.ID.String(),
+	linkConfig := plaid.LinkTokenConfigs{
+		Products:     s.products,
+		CountryCodes: s.countryCodes,
+		Language:     s.language,
+		Webhook:      s.webhook,
+		ClientName:   user.Email,
+		User: &plaid.LinkTokenUser{
+			ClientUserID: user.ID.String(),
+		},
 	}
 
 	linkResponse, err := s.client.CreateLinkToken(linkConfig)
 	if err != nil {
 		entry.WithError(err).Error("failed to fetch link token")
-		return "", err
+		return nil, err
 	}
 
+	linkToken := &ledger.LinkState{
+		UserID:     user.ID,
+		State:      uuid.Must(uuid.NewV4()),
+		Token:      linkResponse.LinkToken,
+		Expiration: time.Now().Add(time.Minute * 10),
+	}
+
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.state[linkToken.State] = linkToken
+
 	entry.Info("token fetched successfully")
-	return linkResponse.LinkToken, nil
+	return linkToken, nil
 
 }
 

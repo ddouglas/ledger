@@ -12,6 +12,23 @@ import (
 	"github.com/ddouglas/ledger/internal/server/gql/generated"
 )
 
+func (r *mutationResolver) ConvertMerchantToAlias(ctx context.Context, parent string, child string) (*ledger.Merchant, error) {
+	return r.transaction.ConvertMerchantToAlias(ctx, parent, child)
+}
+
+func (r *mutationResolver) CreateMerchant(ctx context.Context, name string) (*ledger.Merchant, error) {
+	return r.transaction.CreateMerchant(ctx, &ledger.Merchant{
+		Name: name,
+	})
+}
+
+func (r *mutationResolver) UpdateMerchant(ctx context.Context, merchantID string, name string) (bool, error) {
+	_, err := r.transaction.UpdateMerchant(ctx, merchantID, &ledger.Merchant{
+		Name: name,
+	})
+	return err == nil, err
+}
+
 func (r *mutationResolver) DeleteReceipt(ctx context.Context, itemID string, transactionID string) (bool, error) {
 	err := r.transaction.RemoveReceiptFromTransaction(ctx, itemID, transactionID)
 

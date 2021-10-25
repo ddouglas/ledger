@@ -3,6 +3,8 @@ package ledger
 import (
 	"context"
 	"time"
+
+	"github.com/gofrs/uuid"
 )
 
 type PlaidRepository interface {
@@ -29,4 +31,16 @@ type PlaidCategory struct {
 	Hierarchy SliceString `db:"hierarchy" json:"hierarchy"`
 	CreatedAt time.Time   `db:"created_at" json:"-"`
 	UpdatedAt time.Time   `db:"updated_at" json:"-"`
+}
+
+type LinkState struct {
+	UserID     uuid.UUID
+	State      uuid.UUID
+	Token      string
+	Expiration time.Time
+}
+
+type LinkToken struct {
+	State       uuid.UUID `json:"state"`
+	AccessToken string    `json:"access_token"`
 }

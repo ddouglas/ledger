@@ -16,8 +16,8 @@ worker: build
 	# aws-vault exec ledger-api-admin -- chamber exec ledger-api/development -- 
 	./.build/ledger worker
 
-# dbuild:
-# 	docker build . -t ledger:latest
+dbuild:
+	docker build . -t ledger:latest
 
 # dcupd:
 # 	docker-compose up -d

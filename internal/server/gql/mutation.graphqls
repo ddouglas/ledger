@@ -1,4 +1,7 @@
 type Mutation {
+    convertMerchantToAlias(parent: String!, child: String!): Merchant!
+    createMerchant(name: String!): Merchant!
+    updateMerchant(merchantID: String!, name: String!): Boolean!
     deleteReceipt(itemID: String!, transactionID: String!): Boolean!
     updateTransaction(itemID: String!, transactionID: String!, input: UpdateTransactionInput): Transaction!
 }

@@ -44,7 +44,6 @@ func (s *server) authorization(next http.Handler) http.Handler {
 		for _, prefix := range prefixes {
 			authHeader = strings.TrimPrefix(authHeader, prefix)
 		}
-
 		token, err := s.auth.ValidateToken(ctx, authHeader)
 		if err != nil {
 			s.writeError(ctx, w, http.StatusUnauthorized, fmt.Errorf("failed to validate token: %w", err))
